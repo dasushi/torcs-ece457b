@@ -115,6 +115,11 @@ void BPNeuralNetwork::randomize_weights(unsigned int random_seed){
 }
 
 
+//default values:
+// in_func = 0, h_func = 1
+//input layer: func = linear, add = 0, w = 1
+//hidden & output layers: func = sigmoid, in_val = 1, w = 0
+
 void BPNeuralNetwork::init_links(const float *add_vec, const float *mul_vec, int in_func, int h_func){
 	BPNeuralLayer *layer;
 	BPNeuralLayer *prev_layer;
@@ -197,8 +202,8 @@ void BPNeuralNetwork::backpropagation_run(const float *desired_vec){
 	for(int i = 1; i < m_layer_count; i++){
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 			for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
-				deltaw = nval * layers[i]->neurons[j]->inputs[k]0>ival * layers[i]*neurons[j]->delta;
-				deltaw += alpha * layers[i]->neurons[j]0>inputs[k]->deltaw_prev;
+				deltaw = nval * layers[i]->neurons[j]->inputs[k]0>in_val * layers[i]*neurons[j]->delta;
+				deltaw += alpha * layers[i]->neurons[j]->inputs[k]->deltaw_prev;
 				layers[i]->neurons[j]->inputs[k]->deltaw_prev = deltaw;
 				layers[i]->neurons[j]->inputs[k]->w += deltaw;
 			}
@@ -213,7 +218,7 @@ bool BPNeuralNetwork::train(const float *in_vec, float *out_vec, const float *de
 	classify(in_vec, out_vec);
 	for(int i = 0; i < layers[m_layer_count - 1]->get_neuron_count(); i++){
 		deviation = fabs(out_vec[i] - desired_vec[i]);
-		if (deviation > error{
+		if (deviation > error){
 			break;
 		}
 	}

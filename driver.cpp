@@ -171,26 +171,43 @@ void Driver::newRace(tCarElt* car, tSituation *s)
 void Driver::drive(tSituation *s)
 {
 	memset(&car->ctrl, 0, sizeof(tCarCtrl));
-
+	
+	//update fields with new situation frame
 	update(s);
 
 	//pit->setPitstop(true);
 
+	//recovery from stuck condition: overrides steering, gear, and accel/brake
 	if (isStuck()) {
 		car->_steerCmd = -mycardata->getCarAngle() / car->_steerLock;
-		car->_gearCmd = -1;		// Reverse gear.
-		car->_accelCmd = 1.0f;	// 100% accelerator pedal.
-		car->_brakeCmd = 0.0f;	// No brakes.
-		car->_clutchCmd = 0.0f;	// Full clutch (gearbox connected with engine).
+		//use reverse gear to back up
+		car->_gearCmd = -1;
+		//full throttle
+		car->_accelCmd = 1.0f;
+		//no brakes on this train
+		car->_brakeCmd = 0.0f;
+		//not shifting
+		car->_clutchCmd = 0.0f;
 	} else {
+		//steering control: gets a target point to steer towards
+		//					filtering applied to avoid collisions
 		car->_steerCmd = filterSColl(getSteer());
-		car->_gearCmd = getGear();
+		//brake control: determine if in braking zone,
+		//					filter to avoid collisions & for pit,
+		//					filter for ABS (avoiding skids)
 		car->_brakeCmd = filterABS(filterBrakeSpeed(filterBColl(filterBPit(getBrake()))));
+		//if not braking, then determine throttle to apply
 		if (car->_brakeCmd == 0.0f) {
+			//throttle control: get throttle based on ideal targets,
+			//					filter for if being lapped (for other drivers)
+			//					filter to keep on track,
+			//					filter for traction control (avoiding skids)
 			car->_accelCmd = filterTCL(filterTrk(filterOverlap(getAccel())));
 		} else {
 			car->_accelCmd = 0.0f;
   		}
+		//determine the gear and clutch based on RPM
+		car->_gearCmd = getGear();
 		car->_clutchCmd = getClutch();
 
 	}
