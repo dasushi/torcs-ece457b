@@ -1,7 +1,10 @@
 #include "stdafx.h"
 #include "neuron.h"
 
-BPNeuralLink::BPNeuralLink(BPNeuron *in_neuron, BPNeuron *out_neuron, float in, float w_in, float add): deltaw_prev(0.0f){
+BPNeuralLink::BPNeuralLink(BPNeuron *in_neuron, 
+						   BPNeuron *out_neuron, 
+						   float in, float w_in, 
+						   float add): deltaw_prev(0.0f){
 	
 	input_neuron = in_neuron;
 	output_neuron = out_neuron;

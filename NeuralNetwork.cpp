@@ -33,7 +33,7 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 	float w = 0.0f;
 	FILE *filepointer = _wfopen(filename, L"rt");
 	
-	if (fp) {
+	if (filepointer) {
 		if((response = fwscanf(filepointer, L"%d", &m_layer_count)) != 1){
 			fclose(fileponter);
 			m_flag = -1;
@@ -98,6 +98,7 @@ BPNeuralNetwork::~BPNeuralNetwork(){
 	}
 }
 
+//set weights on all neurons to randomized values based on seed value
 void BPNeuralNetwork::randomize_weights(unsigned int random_seed){
 	int weight;
 
@@ -120,7 +121,9 @@ void BPNeuralNetwork::randomize_weights(unsigned int random_seed){
 //input layer: func = linear, add = 0, w = 1
 //hidden & output layers: func = sigmoid, in_val = 1, w = 0
 
-void BPNeuralNetwork::init_links(const float *add_vec, const float *mul_vec, int in_func, int h_func){
+void BPNeuralNetwork::init_links(const float *add_vec, 
+								 const float *mul_vec, 
+								 int in_func, int h_func){
 	BPNeuralLayer *layer;
 	BPNeuralLayer *prev_layer;
 	BPNeuron *neuronPtr;
@@ -130,27 +133,34 @@ void BPNeuralNetwork::init_links(const float *add_vec, const float *mul_vec, int
 	layer = layers[i++];
 	swprintf(layer->layer_name, L"input layer");
 
+	//iterate over input layers neurons and set in, add, mul functions
 	for(int j = 0; j < layer->get_neuron_count(); j++){
 		neuronPtr = layer->neurons[j];
+		
+		//set & add input function with default value
 		neuronPtr->function = in_func;
 		neuronPtr->add_input();
 
+		//set add and multiply (weight) functions if present
 		if(add_vec){
 			neuronPtr->inputs[0]->iadd = add_vec[j];
 		}
 		if(mul_vec){
 			neuronPtr->inputs[0]->w = mul_vec[j];
 		} else {
-			neuronPtr->inputs[0]->w = 1.0f;
+			neuronPtr->inputs[0]->w = 1.0f; //default weight
 		}
 	}
 
+	//iterate over hidden layer neurons and set inputs and bias
 	for(int j = 0; j < m_layer_count - 2; j++){
 		prev_layer = layer;
 		layer = layers[i++];
+
 		swprintf(layer->layer_name, L"hidden layer %d", j + 1);
 
 		for(int k = 0; k < layer->get_neuron_count(); k++){
+			//set hidden function and add default bias
 			neuronPtr = layer->neurons[k];
 			neuronPtr->function = h_func;
 			neuronPtr->add_bias();
@@ -176,6 +186,9 @@ void BPNeuralNetwork::init_links(const float *add_vec, const float *mul_vec, int
 	}
 }
 
+//run one back propagation iteration
+//calculates error gradient by comparing with desired vector
+//error gradient uses 
 void BPNeuralNetwork::backpropagation_run(const float *desired_vec){
 	float nval = m_nval;
 	float alpha = m_alpha;
@@ -202,7 +215,7 @@ void BPNeuralNetwork::backpropagation_run(const float *desired_vec){
 	for(int i = 1; i < m_layer_count; i++){
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 			for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
-				deltaw = nval * layers[i]->neurons[j]->inputs[k]0>in_val * layers[i]*neurons[j]->delta;
+				deltaw = nval * layers[i]->neurons[j]->inputs[k]->in_val * layers[i]*neurons[j]->delta;
 				deltaw += alpha * layers[i]->neurons[j]->inputs[k]->deltaw_prev;
 				layers[i]->neurons[j]->inputs[k]->deltaw_prev = deltaw;
 				layers[i]->neurons[j]->inputs[k]->w += deltaw;

@@ -70,7 +70,7 @@ public:
 	inline BPNeuralLink *get_output_link(int index) const;
 private:
 	//enum for FUNCTION_TYPE
-	int function;
+	int function_type;
 	//delta change
 	float delta;
 	float out_val;
@@ -90,8 +90,8 @@ inline int BPNeuron::get_output_link_count() const{
 	return outputs.size();
 }
 
-inline void BPNeuron::set_function_type(enum FUNCTION_TYPE function_type){
-	function = function_type;
+inline void BPNeuron::set_function_type(enum FUNCTION_TYPE function){
+	function_type = function;
 }
 
 inline BPNeuralLink *BPNeuron::get_input_link(int index) const {
@@ -117,11 +117,11 @@ inline void BPNeuron::input_fire(){
 	out_val = inputs[0]->w * (inputs[0]->in_val + inputs[0]->in_add);
 
 	//apply sigmoid function, if linear nothing required
-	if(function == SIGMOID){
+	if(function_type == SIGMOID){
 		out_val = 1.0f / (1.0f + exp(float(out_val * (-1.0f)));
 	}
 
-	//connect outputs to other input links
+	//connect outputs to other neuron's input links
 	for(int i = 0; i < get_output_link_count(); i++){
 		outputs[i]->in_val = out_val;
 	}
@@ -135,11 +135,11 @@ inline void BPNeuron::fire(){
 		out_val += inputs[i]->w * inputs[i]->in_val;
 	}
 	//apply sigmoid function, if linear nothing required
-	if(function == SIGMOID){
+	if(function_type == SIGMOID){
 		out_val = 1.0f / (exp(float((-1.0f) * out_val)) + 1.0f);
 	}
 
-	//connect outputs to other input links
+	//connect outputs to other neuron's input links
 	for(int i = 0; i < get_output_link_count(); i++){
 		outputs[i]->in_val = out_val;
 	}
