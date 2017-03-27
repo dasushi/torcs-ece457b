@@ -3,7 +3,7 @@
 	ProjectType="Visual C++"
 	Version="9.00"
 	Name="neuralDriver"
-	ProjectGUID="{A0513CBB-8FE9-44F7-BBF3-7814EFB5132C}"
+	ProjectGUID="{1A405682-3F13-4CB6-812D-38188AF4E107}"
 	RootNamespace="neuralDriver"
 	TargetFrameworkVersion="0"
 	>
@@ -279,10 +279,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\driverNN.cpp"
-				>
-			</File>
-			<File
 				RelativePath="learn.cpp"
 				>
 				<FileConfiguration
@@ -303,6 +299,10 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\networkManager.cpp"
+				>
 			</File>
 			<File
 				RelativePath=".\neuralDriver.cpp"
