@@ -33,21 +33,26 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 	float w = 0.0f;
 	FILE *filepointer = _wfopen(filename, L"rt");
 	
+	//if file loaded successfully
 	if (filepointer) {
+		//scan layer count
 		if((response = fwscanf(filepointer, L"%d", &m_layer_count)) != 1){
 			fclose(fileponter);
 			m_flag = -1;
 			return;
 		}
 		for(int i = 0; i < m_layer_count; i++){
+			//scan nval
 			if((response = fwscanf(filepointer, L"%d", &nval)) != 1){
 				fclose(fileponter);
 				m_flag = -1;
 				return;
 			} else {
+				//push input layers
 				layers.push_back(new BPNeuralLayer(nval));
 			}
 		}
+		//scan input and hidden function types
 		if((response = fwscanf(filepointer, L"%d %d", &in_func, &h_func)) != 2){
 			//default linear input function
 			in_func = 0;
@@ -58,27 +63,30 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 		vector<float> add_layers, mult_layers;
 		for(int i = 0; i < layers[0]->get_neuron_count(); i++){
 			float add, mult;
+			//scan add and multiplier values
 			if((response = fwscanf(filepointer, L"%f %f", &add, &mult)) != 2){
 				for(int j = 0; j < layers[0]->get_neuron_count(); j++){
-					add_layers.push_back(0.0);
-					mult_layers.push_back(1.0);
+					//default add and multi values
+					add_layers.push_back(0.0f);
+					mult_layers.push_back(1.0f);
 				}
+			}else{
+				add_layers.push_back(add);
+				mult_layers.push_back(mult);
 			}
-			add_layers.push_back(add);
-			mult_layers.push_back(mult);
 		}
-
-		initialize_links(&add_layers[0], &mult_layers[0], in_func, h_func);
+		//initialize loaded values
+		init_links(&add_layers[0], &mult_layers[0], in_func, h_func);
 
 		for(int i = 1; i < m_layer_count; i++){
 			for(int j = 0; j < layers[i]->neurons[i]->get_neuron_count(); j++){
 				for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
 					if((response = fwscanf(filepointer, L"%f", &w)) != 1){
-						m_flag = 1;
-
+						m_flag = 1; //flag = 1 for randomized weights
 						randomize_weights((unsigned int) time(0));
-						return;
+						return; //init random values since loading failed
 					} else {
+						//set properly loaded value
 						layers[i]->neurons[j]->inputs[k]->w = w;
 					}
 				}
@@ -186,22 +194,24 @@ void BPNeuralNetwork::init_links(const float *add_vec,
 	}
 }
 
-//run one back propagation iteration
+//run back propagation
 //calculates error gradient by comparing with desired vector
-//error gradient uses 
-void BPNeuralNetwork::backpropagation_run(const float *desired_vec){
-	float nval = m_nval;
-	float alpha = m_alpha;
+//uses specified learning rule and learning rate (momentum)
+void BPNeuralNetwork::backpropagation_train(const float *desired_vec){
+	float nval = m_nval; //learning rule
+	float alpha = m_alpha; //learning rate
 	float delta;
 	float deltaw;
 	float out_val;
 
 	for(int i = 0; i < layers[m_layer_count-1]->get_neuron_count(); i++){
+		//calculate deltas for output layer
 		out_val = layers[m_layer_count-1]->neurons[i]->out_val;
 		layers[m_layer_count-1]->neurons[i]->delta = out_val * (desired_vec[i] - out_val) * (1.0f - out_val);
 	}
 
 	for(int i = m_layer_count - 2; i > 0; i--){
+		//calculate delta for hidden layer
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 			delta = 0.0f;
 			for(int k = 0; k < layers[i]->neurons[j]->get_output_link_count(); k++){
@@ -212,11 +222,14 @@ void BPNeuralNetwork::backpropagation_run(const float *desired_vec){
 		}
 	}
 
+	//set weights for all layers
 	for(int i = 1; i < m_layer_count; i++){
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 			for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
+				//change: delta = learning_rule * x_in * delta + learning_rate * delta_previous
 				deltaw = nval * layers[i]->neurons[j]->inputs[k]->in_val * layers[i]*neurons[j]->delta;
 				deltaw += alpha * layers[i]->neurons[j]->inputs[k]->deltaw_prev;
+				//set weights
 				layers[i]->neurons[j]->inputs[k]->deltaw_prev = deltaw;
 				layers[i]->neurons[j]->inputs[k]->w += deltaw;
 			}
@@ -232,14 +245,16 @@ bool BPNeuralNetwork::train(const float *in_vec, float *out_vec, const float *de
 	for(int i = 0; i < layers[m_layer_count - 1]->get_neuron_count(); i++){
 		deviation = fabs(out_vec[i] - desired_vec[i]);
 		if (deviation > error){
+			//we have hit error margin, time for backpropagation
 			break;
 		}
 	}
 
 	if(deviation > error){
-		backprop_run(desired_vec);
+		backpropagation_train(desired_vec);
 		return true;
 	} else {
+		//within error margin after all runs, not trained
 		return false;
 	}
 }

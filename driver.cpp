@@ -18,6 +18,7 @@
  ***************************************************************************/
 
 #include "driver.h"
+#include "NeuralNetwork.h"
 
 const float Driver::MAX_UNSTUCK_ANGLE = 15.0f/180.0f*PI;	// [radians] If the angle of the car on the track is smaller, we assume we are not stuck.
 const float Driver::UNSTUCK_TIME_LIMIT = 2.0f;				// [s] We try to get unstuck after this time.
@@ -191,7 +192,13 @@ void Driver::drive(tSituation *s)
 	} else {
 		//steering control: gets a target point to steer towards
 		//					filtering applied to avoid collisions
+		//TODO: adapt to NN steering point
+		//		INPUT: distance vectors, speed
+		//		OUTPUT: steering angle desired
 		car->_steerCmd = filterSColl(getSteer());
+		//TODO: get "NN control [-1,1]" based on sensors
+		//		and determine brake & accel based on polarity
+
 		//brake control: determine if in braking zone,
 		//					filter to avoid collisions & for pit,
 		//					filter for ABS (avoiding skids)

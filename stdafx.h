@@ -25,7 +25,7 @@ using namespace std;
 //
 typedef struct _entry {
 	float *vec;
-	int clas;
+	float val;
 	int size;
 	wchar_t filename[_MAX_PATH];
 } ENTRY, *PENTRY;
@@ -33,6 +33,6 @@ typedef struct _entry {
 typedef struct _record {
 	vector<PENTRY> entries;
 	vector<vector<int>> indices;
-	vector<int> clasnum;
-} REC, *PREC;
+	vector<float> clasnum;
+} RECORD, *PRECORD;
 

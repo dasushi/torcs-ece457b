@@ -1,5 +1,5 @@
 ;
-;   file                 : bt.def
+;   file                 : neuralDriver.def
 ;   created              : Wed Jan 8 18:31:16 CET 2003
 ;   copyright            : (C) 2002 Bernhard Wymann
 ;
@@ -10,10 +10,10 @@
 ;    (at your option) any later version.                                 
 ;
 
-LIBRARY	bt
+LIBRARY	neuralDriver
 
 SECTIONS .data READ WRITE
 
 EXPORTS
-	bt
+	neuralDriver
 

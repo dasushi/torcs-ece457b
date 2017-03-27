@@ -1,6 +1,6 @@
 /***************************************************************************
 
-    file                 : bt.cpp
+    file                 : neuralDriver.cpp
     created              : Wed Jan 8 18:31:16 CET 2003
     copyright            : (C) 2002-2004 Bernhard Wymann
     email                : berniw@bluewin.ch
@@ -58,7 +58,7 @@ static void endRace(int index, tCarElt *car, tSituation *s);
 
 
 // Module entry point.
-extern "C" int bt(tModInfo *modInfo)
+extern "C" int neuralDriver(tModInfo *modInfo)
 {
 	int i;
 	

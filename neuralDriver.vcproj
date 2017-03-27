@@ -2,8 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="bt"
+	Name="neuralDriver"
 	ProjectGUID="{A0513CBB-8FE9-44F7-BBF3-7814EFB5132C}"
+	RootNamespace="neuralDriver"
 	TargetFrameworkVersion="0"
 	>
 	<Platforms>
@@ -43,7 +44,7 @@
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
 				TargetEnvironment="1"
-				TypeLibraryName=".\Debug/bt.tlb"
+				TypeLibraryName=".\Debug/neuralDriver.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -53,7 +54,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;BT_EXPORTS;DEBUG;DEBUG_OUT"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				PrecompiledHeaderFile=".\Debug/bt.pch"
+				PrecompiledHeaderFile=".\Debug/neuralDriver.pch"
 				AssemblerListingLocation=".\Debug/"
 				ObjectFile=".\Debug/"
 				ProgramDataBaseFileName=".\Debug/"
@@ -78,21 +79,21 @@
 				IgnoreImportLibrary="true"
 				LinkLibraryDependencies="false"
 				AdditionalDependencies="tgf.lib robottools.lib sg_vs2008_32.lib ul_vs2008_32.lib"
-				OutputFile=".\Debug/bt.dll"
+				OutputFile=".\Debug/neuralDriver.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="../../../export/libd,../../windows/lib"
 				GenerateManifest="false"
 				EnableUAC="false"
 				IgnoreDefaultLibraryNames="LIBCMT"
-				ModuleDefinitionFile=".\bt.def"
+				ModuleDefinitionFile=".\neuralDriver.def"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Debug/bt.pdb"
+				ProgramDatabaseFile=".\Debug/neuralDriver.pdb"
 				GenerateMapFile="true"
-				MapFileName=".\Debug/bt.map"
+				MapFileName=".\Debug/neuralDriver.map"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary=".\Debug/bt.lib"
+				ImportLibrary=".\Debug/neuralDriver.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -107,7 +108,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Debug/bt.bsc"
+				OutputFile=".\Debug/neuralDriver.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -117,7 +118,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(TargetDir)*.dll $(SolutionDir)runtimed\drivers\bt"
+				CommandLine="copy $(TargetDir)*.dll $(SolutionDir)runtimed\drivers\neuralDriver"
 			/>
 		</Configuration>
 		<Configuration
@@ -149,7 +150,7 @@
 				MkTypLibCompatible="true"
 				SuppressStartupBanner="true"
 				TargetEnvironment="1"
-				TypeLibraryName=".\Release/bt.tlb"
+				TypeLibraryName=".\Release/neuralDriver.tlb"
 				HeaderFileName=""
 			/>
 			<Tool
@@ -162,7 +163,7 @@
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
 				EnableFunctionLevelLinking="false"
-				PrecompiledHeaderFile=".\Release/bt.pch"
+				PrecompiledHeaderFile=".\Release/neuralDriver.pch"
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
@@ -185,19 +186,19 @@
 				IgnoreImportLibrary="true"
 				LinkLibraryDependencies="false"
 				AdditionalDependencies="tgf.lib robottools.lib sg_vs2008_32.lib ul_vs2008_32.lib"
-				OutputFile=".\Release/bt.dll"
+				OutputFile=".\Release/neuralDriver.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="../../../export/lib,../../windows/lib"
 				GenerateManifest="false"
 				EnableUAC="false"
-				ModuleDefinitionFile=".\bt.def"
-				ProgramDatabaseFile=".\Release/bt.pdb"
+				ModuleDefinitionFile=".\neuralDriver.def"
+				ProgramDatabaseFile=".\Release/neuralDriver.pdb"
 				GenerateMapFile="true"
-				MapFileName=".\Release/bt.map"
+				MapFileName=".\Release/neuralDriver.map"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary=".\Release/bt.lib"
+				ImportLibrary=".\Release/neuralDriver.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -212,7 +213,7 @@
 			<Tool
 				Name="VCBscMakeTool"
 				SuppressStartupBanner="true"
-				OutputFile=".\Release/bt.bsc"
+				OutputFile=".\Release/neuralDriver.bsc"
 			/>
 			<Tool
 				Name="VCFxCopTool"
@@ -222,7 +223,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy $(TargetDir)*.dll $(SolutionDir)runtime\drivers\bt"
+				CommandLine="copy $(TargetDir)*.dll $(SolutionDir)runtime\drivers\neuralDriver"
 			/>
 		</Configuration>
 	</Configurations>
@@ -233,32 +234,6 @@
 			Name="Source Files"
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
-			<File
-				RelativePath="bt.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="bt.def"
-				>
-			</File>
 			<File
 				RelativePath="cardata.cpp"
 				>
@@ -304,6 +279,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\driverNN.cpp"
+				>
+			</File>
+			<File
 				RelativePath="learn.cpp"
 				>
 				<FileConfiguration
@@ -326,11 +305,37 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\NeuralNetwork.cpp"
+				RelativePath=".\neuralDriver.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\neuralDriver.def"
 				>
 			</File>
 			<File
-				RelativePath=".\Neuron.cpp"
+				RelativePath=".\neuralNetwork.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\neuron.cpp"
 				>
 			</File>
 			<File
@@ -400,6 +405,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\stdafx.cpp"
+				>
+			</File>
+			<File
 				RelativePath="strategy.cpp"
 				>
 				<FileConfiguration
@@ -443,7 +452,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Neuron.h"
+				RelativePath=".\neuralNetwork.h"
+				>
+			</File>
+			<File
+				RelativePath=".\neuron.h"
 				>
 			</File>
 			<File
@@ -456,6 +469,10 @@
 			</File>
 			<File
 				RelativePath="spline.h"
+				>
+			</File>
+			<File
+				RelativePath=".\stdafx.h"
 				>
 			</File>
 			<File
