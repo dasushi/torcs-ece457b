@@ -1,11 +1,8 @@
 /***************************************************************************
-
-    file                 : spline.h
-    created              : Wed Mai 14 19:53:00 CET 2003
-    copyright            : (C) 2003-2004 by Bernhard Wymann
-    email                : berniw@bluewin.ch
-    version              : $Id: spline.h,v 1.3 2004/08/10 20:11:49 berniw Exp $
-
+ 
+    file                 : WrapperBaseDriver.h
+    copyright            : (C) 2007 Daniele Loiacono
+ 
  ***************************************************************************/
 
 /***************************************************************************
@@ -16,28 +13,24 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+#ifndef WRAPPERBASEDRIVER_H_
+#define WRAPPERBASEDRIVER_H_
 
-#ifndef _SPLINE_H_
-#define _SPLINE_H_
+#include "CarState.h"
+#include "CarControl.h"
+#include "BaseDriver.h"
+#include <cmath>
+#include <cstdlib>
 
-class SplinePoint {
-	public:
-		float x;	// x coordinate.
-		float y;	// y coordinate.
-		float s;	// slope.
+class WrapperBaseDriver : public BaseDriver
+{
+public:
+	
+	// the drive function wiht string input and output
+	virtual string drive(string sensors);
+	
+	// drive function that exploits the CarState and CarControl wrappers as input and output.
+	virtual CarControl wDrive(CarState cs)=0;
 };
 
-
-class Spline {
-	public:
-		Spline(int dim, SplinePoint *s);
-
-		float evaluate(float z);
-
-	private:
-		SplinePoint *s;
-		int dim;
-};
-
-#endif // _SPLINE_H_
-
+#endif /*WRAPPERBASEDRIVER_H_*/

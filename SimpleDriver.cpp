@@ -1,6 +1,6 @@
 /***************************************************************************
  
-    file                 : NeuralDriver.cpp
+    file                 : SimpleDriver.cpp
     copyright            : (C) 2007 Daniele Loiacono
  
  ***************************************************************************/
@@ -13,53 +13,53 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include "NeuralDriver.h"
+#include "SimpleDriver.h"
 
 
 /* Gear Changing Constants*/
-const int NeuralDriver::gearUp[6]=
+const int SimpleDriver::gearUp[6]=
     {
-        8000,8250,8500,8750,9000,0
+        5000,6000,6000,6500,7000,0
     };
-const int NeuralDriver::gearDown[6]=
+const int SimpleDriver::gearDown[6]=
     {
         0,2500,3000,3000,3500,3500
     };
 
 /* Stuck constants*/
-const int NeuralDriver::stuckTime = 25;
-const float NeuralDriver::stuckAngle = .523598775; //PI/6
+const int SimpleDriver::stuckTime = 25;
+const float SimpleDriver::stuckAngle = .523598775; //PI/6
 
 /* Accel and Brake Constants*/
-const float NeuralDriver::maxSpeedDist=70;
-const float NeuralDriver::maxSpeed=150;
-const float NeuralDriver::sin5 = 0.08716;
-const float NeuralDriver::cos5 = 0.99619;
+const float SimpleDriver::maxSpeedDist=70;
+const float SimpleDriver::maxSpeed=150;
+const float SimpleDriver::sin5 = 0.08716;
+const float SimpleDriver::cos5 = 0.99619;
 
 /* Steering constants*/
-const float NeuralDriver::steerLock=0.366519 ;
-const float NeuralDriver::steerSensitivityOffset=80.0;
-const float NeuralDriver::wheelSensitivityCoeff=1;
+const float SimpleDriver::steerLock=0.366519 ;
+const float SimpleDriver::steerSensitivityOffset=80.0;
+const float SimpleDriver::wheelSensitivityCoeff=1;
 
 /* ABS Filter Constants */
-const float NeuralDriver::wheelRadius[4]={0.3306,0.3306,0.3276,0.3276};
-const float NeuralDriver::absSlip=2.0;
-const float NeuralDriver::absRange=3.0;
-const float NeuralDriver::absMinSpeed=3.0;
+const float SimpleDriver::wheelRadius[4]={0.3306,0.3306,0.3276,0.3276};
+const float SimpleDriver::absSlip=2.0;
+const float SimpleDriver::absRange=3.0;
+const float SimpleDriver::absMinSpeed=3.0;
 
 /* Clutch constants */
-const float NeuralDriver::clutchMax=0.5;
-const float NeuralDriver::clutchDelta=0.05;
-const float NeuralDriver::clutchRange=0.82;
-const float NeuralDriver::clutchDeltaTime=0.02;
-const float NeuralDriver::clutchDeltaRaced=10;
-const float NeuralDriver::clutchDec=0.01;
-const float NeuralDriver::clutchMaxModifier=1.3;
-const float NeuralDriver::clutchMaxTime=1.5;
+const float SimpleDriver::clutchMax=0.5;
+const float SimpleDriver::clutchDelta=0.05;
+const float SimpleDriver::clutchRange=0.82;
+const float SimpleDriver::clutchDeltaTime=0.02;
+const float SimpleDriver::clutchDeltaRaced=10;
+const float SimpleDriver::clutchDec=0.01;
+const float SimpleDriver::clutchMaxModifier=1.3;
+const float SimpleDriver::clutchMaxTime=1.5;
 
 
 int
-NeuralDriver::getGear(CarState &cs)
+SimpleDriver::getGear(CarState &cs)
 {
 
     int gear = cs.getGear();
@@ -82,7 +82,7 @@ NeuralDriver::getGear(CarState &cs)
 }
 
 float
-NeuralDriver::getSteer(CarState &cs)
+SimpleDriver::getSteer(CarState &cs)
 {
 	// steering angle is compute by correcting the actual car angle w.r.t. to track 
 	// axis [cs.getAngle()] and to adjust car position w.r.t to middle of track [cs.getTrackPos()*0.5]
@@ -95,7 +95,7 @@ NeuralDriver::getSteer(CarState &cs)
 
 }
 float
-NeuralDriver::getAccel(CarState &cs)
+SimpleDriver::getAccel(CarState &cs)
 {
     // checks if car is inside of track
     if (cs.getTrackPos() < 1 && cs.getTrackPos() > -1)
@@ -111,13 +111,13 @@ NeuralDriver::getAccel(CarState &cs)
 
         // track is straight and enough far from a turn so goes to max speed
         if (cSensor>maxSpeedDist || (cSensor>=rxSensor && cSensor >= sxSensor))
-			// accel/brake command is expontially scaled w.r.t. the difference between target speed and current one
 			return 2/(1+exp(cs.getSpeedX() - maxSpeed)) - 1;
         else
         {
-			//track is not straight, get neural network steering prediction
 			return getAccBrakePrediction();
         }
+        // accel/brake command is expontially scaled w.r.t. the difference between target speed and current one
+        return 2/(1+exp(cs.getSpeedX() - targetSpeed)) - 1;
     }
     else
         return 0.3; // when out of track returns a moderate acceleration command
@@ -125,7 +125,7 @@ NeuralDriver::getAccel(CarState &cs)
 }
 
 CarControl
-NeuralDriver::wDrive(CarState cs)
+SimpleDriver::wDrive(CarState cs)
 {
 	// check if car is currently stuck
 	if ( fabs(cs.getAngle()) > stuckAngle )
@@ -204,11 +204,11 @@ NeuralDriver::wDrive(CarState cs)
 }
 
 float
-NeuralDriver::filterABS(CarState &cs,float brake)
+SimpleDriver::filterABS(CarState &cs,float brake)
 {
 	// convert speed to m/s
 	float speed = cs.getSpeedX() / 3.6;
-	// when speed lower than min speed for abs do nothing
+	// when spedd lower than min speed for abs do nothing
     if (speed < absMinSpeed)
         return brake;
     
@@ -220,7 +220,7 @@ NeuralDriver::filterABS(CarState &cs,float brake)
     }
     // slip is the difference between actual speed of car and average speed of wheels
     slip = speed - slip/4.0f;
-    // when slip too high apply ABS
+    // when slip too high applu ABS
     if (slip > absSlip)
     {
         brake = brake - (slip - absSlip)/absRange;
@@ -234,19 +234,19 @@ NeuralDriver::filterABS(CarState &cs,float brake)
 }
 
 void
-NeuralDriver::onShutdown()
+SimpleDriver::onShutdown()
 {
     cout << "Bye bye!" << endl;
 }
 
 void
-NeuralDriver::onRestart()
+SimpleDriver::onRestart()
 {
     cout << "Restarting the race!" << endl;
 }
 
 void
-NeuralDriver::clutching(CarState &cs, float &clutch)
+SimpleDriver::clutching(CarState &cs, float &clutch)
 {
   double maxClutch = clutchMax;
 
@@ -283,7 +283,7 @@ NeuralDriver::clutching(CarState &cs, float &clutch)
 }
 
 void
-NeuralDriver::init(float *angles)
+SimpleDriver::init(float *angles)
 {
 
 	// set angles as {-90,-75,-60,-45,-30,20,15,10,5,0,5,10,15,20,30,45,60,75,90}
