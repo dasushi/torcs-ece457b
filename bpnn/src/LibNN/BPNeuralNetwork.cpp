@@ -38,14 +38,14 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 		//scan layer count
 		if((response = fwscanf(filepointer, L"%d", &m_layer_count)) != 1){
 			fclose(filepointer);
-			m_flag = -1;
+			m_flag = -1; //loading failed
 			return;
 		}
 		for(int i = 0; i < m_layer_count; i++){
 			//scan nval
 			if((response = fwscanf(filepointer, L"%d", &nval)) != 1){
 				fclose(filepointer);
-				m_flag = -1;
+				m_flag = -1; //loading failed
 				return;
 			} else {
 				//push input layers

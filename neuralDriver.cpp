@@ -84,21 +84,40 @@ NeuralDriver::getGear(CarState &cs)
 float
 NeuralDriver::getSteer(CarState &cs)
 {
-	// steering angle is compute by correcting the actual car angle w.r.t. to track 
-	// axis [cs.getAngle()] and to adjust car position w.r.t to middle of track [cs.getTrackPos()*0.5]
-    float targetAngle=(cs.getAngle()-cs.getTrackPos()*0.5);
-    // at high speed reduce the steering command to avoid loosing the control
-    if (cs.getSpeedX() > steerSensitivityOffset)
-        return targetAngle/(steerLock*(cs.getSpeedX()-steerSensitivityOffset)*wheelSensitivityCoeff);
-    else
-        return (targetAngle)/steerLock;
-
-}
-
-float
-NeuralDriver::getNeuralSteer(CarState &cs)
-{
+	// reading of sensor at +10 degree w.r.t. car axis
+    float rxSensor=cs.getTrack(11);
+    // reading of sensor parallel to car axis
+    float cSensor=cs.getTrack(9);
+    // reading of sensor at -10 degree w.r.t. car axis
+    float sxSensor=cs.getTrack(7);
 	
+	// track is straight and far enough from a turn, simplify steering
+    if (cSensor>maxSpeedDist || (cSensor>=rxSensor && cSensor >= sxSensor)){
+		// steering angle is compute by correcting the actual car angle w.r.t. to track 
+		// axis [cs.getAngle()] and to adjust car position w.r.t to middle of track [cs.getTrackPos()*0.5]
+		float targetAngle=(cs.getAngle()-cs.getTrackPos()*0.5);
+		
+		// at high speed reduce the steering command to avoid loosing the control
+		if (cs.getSpeedX() > steerSensitivityOffset)
+			return targetAngle/(steerLock*(cs.getSpeedX()-steerSensitivityOffset)*wheelSensitivityCoeff);
+		else
+			return (targetAngle)/steerLock;
+	} else {
+		float current_angle = ((cs.getAngle() / PI) + 1.0f) / 2; //normalize from [-pi, +pi] to [-1,1] to [0,2] to [0,1] 
+		float current_offset = (cs.getTrackPos() + 1.0f) / 2; //[-1,1] (when network is in control) to [0,2] to [0,1]
+		float x_speed = cs.getSpeedX() / maxSpeed; //x speed normalized
+		if((cSensor - rxSensor) > maxRxOffset){
+				maxRxOffset = cSensor - rxSensor;
+		}
+		if((cSensor - sxSensor > maxSxOffset){
+				maxSxOffset = cSensor - sxSensor;
+		}
+		float rxOffset = (cSensor - rxSensor) / maxRxOffset;
+		float sxOffset = (cSensor - sxSensor) / maxSxOffset;
+		float *input_vector = new float[
+		
+		
+	}
 }
 
 float
@@ -119,7 +138,7 @@ NeuralDriver::getAccel(CarState &cs)
         // track is straight and far enough from a turn, go to max speed
         if (cSensor>maxSpeedDist || (cSensor>=rxSensor && cSensor >= sxSensor))
 			// accel/brake command is expontially scaled w.r.t. the difference between target speed and current one
-			return 1/(1+exp(cs.getSpeedX() - maxSpeed)); //[0, 1]
+			return 1/(1+exp(cs.getSpeedX() - maxSpeed)); //[0, 1] -> [0,0.5] brakes [0.5,1.0] accel
         else
         {
 			//track is not straight, get neural network steering prediction [0,1] -> [0,0.5] brakes [0.5,1.0] accel

@@ -34,7 +34,7 @@ class NeuralDriver : public WrapperBaseDriver
 public:
 	
 	// Constructor
-	NeuralDriver(){stuck=0;clutch=0.0;};
+	NeuralDriver(){stuck=0;clutch=0.0;maxRxOffset=10.0f;maxSxOffset=10.0f;};
 
 	// NeuralDriver implements a simple and heuristic controller for driving
 	virtual CarControl wDrive(CarState cs);
@@ -115,15 +115,18 @@ private:
 	
 	// current clutch
 	float clutch;
-
+	
+	//current maxRxOffset
+	float maxRxOffset;
+	
+	//current maxSxOffset
+	float maxSxOffset;
+	
 	// Solves the gear changing subproblems
 	int getGear(CarState &cs);
 
 	// Solves the steering subproblems
 	float getSteer(CarState &cs);
-	
-	//Solves the steering angle using the neural network
-	float getNeuralSteer(CarState &cs);
 	
 	// Solves for acceleration 
 	float getAccel(CarState &cs);
