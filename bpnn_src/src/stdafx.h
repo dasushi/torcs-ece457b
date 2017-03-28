@@ -32,7 +32,7 @@ typedef struct _entry {
 
 typedef struct _record {
 	vector<PENTRY> entries;
-	vector<vector<int>> indices;
-	vector<float> clasnum;
+	vector< vector<int> > indices;
+	//vector<float> clasnum;
 } RECORD, *PRECORD;
 

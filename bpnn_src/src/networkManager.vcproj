@@ -47,6 +47,7 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="2"
+				PrecompiledHeaderThrough="stdafx.h"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
 				DebugInformationFormat="4"
@@ -245,19 +246,19 @@
 			Name="LibNN"
 			>
 			<File
-				RelativePath=".\LibNN\network.cpp"
+				RelativePath=".\LibNN\BPNeuralNetwork.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\LibNN\network.h"
+				RelativePath=".\LibNN\BPNeuralNetwork.h"
 				>
 			</File>
 			<File
-				RelativePath=".\LibNN\neuron.cpp"
+				RelativePath=".\LibNN\BPNeuron.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\LibNN\neuron.h"
+				RelativePath=".\LibNN\BPNeuron.h"
 				>
 			</File>
 		</Filter>

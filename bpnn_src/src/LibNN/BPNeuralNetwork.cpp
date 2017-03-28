@@ -206,18 +206,21 @@ void BPNeuralNetwork::backpropagation_train(const float *desired_vec){
 
 	for(int i = 0; i < layers[get_layer_count()-1]->get_neuron_count(); i++){
 		//calculate deltas for output layer
+		//delta = out_val * (1 - out_val) * (out_val - pred_val)
 		out_val = layers[get_layer_count()-1]->neurons[i]->out_val;
-		layers[m_layer_count-1]->neurons[i]->delta = out_val * (desired_vec[i] - out_val) * (1.0f - out_val);
+		layers[get_layer_count()-1]->neurons[i]->delta = out_val * (desired_vec[i] - out_val) * (1.0f - out_val);
 	}
 
 	for(int i = m_layer_count - 2; i > 0; i--){
 		//calculate delta for hidden layer
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
+			//delta = sum (weight * delta) for all connected to output layre
 			delta = 0.0f;
 			for(int k = 0; k < layers[i]->neurons[j]->get_output_link_count(); k++){
 				delta += layers[i]->neurons[j]->outputs[k]->w * layers[i]->neurons[j]->outputs[k]->input_neuron->delta;
 			}
 			out_val = layers[i]->neurons[j]->out_val;
+			//backpropagated error term = out * (1 - out) * delta
 			layers[i]->neurons[j]->delta = out_val * delta * (1 - out_val);
 		}
 	}
