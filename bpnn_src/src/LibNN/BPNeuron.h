@@ -83,11 +83,11 @@ private:
 
 
 inline int BPNeuron::get_input_link_count() const{
-	return inputs.size();
+	return (int) inputs.size();
 }
 
 inline int BPNeuron::get_output_link_count() const{
-	return outputs.size();
+	return (int) outputs.size();
 }
 
 inline void BPNeuron::set_function_type(enum FUNCTION_TYPE function){
@@ -118,7 +118,7 @@ inline void BPNeuron::input_fire(){
 
 	//apply sigmoid function, if linear nothing required
 	if(function_type == SIGMOID){
-		out_val = 1.0f / (1.0f + exp(float(out_val * (-1.0f)));
+		out_val = 1.0f / (1.0f + exp(float(out_val * (-1.0f))));
 	}
 
 	//connect outputs to other neuron's input links

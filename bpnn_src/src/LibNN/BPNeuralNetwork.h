@@ -23,7 +23,7 @@ private:
 
 inline BPNeuron *BPNeuralLayer::get_neuron(int index) const{
 
-	if(index < 0 | index > get_neuron_count() - 1){
+	if((index < 0) | ((index > get_neuron_count()) - 1)){
 		return 0;
 	}
 
@@ -42,7 +42,7 @@ public:
 	~BPNeuralNetwork();
 
 	void randomize_weights(unsigned int rand_seed = 0);
-	void initialize_links(const float *acc_vec = 0, const float *mul_vec = 0,
+	void init_links(const float *acc_vec = 0, const float *mul_vec = 0,
 		int in_func = 0, int h_func = 1);
 	void classify(const float *in_vec, float *out_vec);
 
@@ -62,9 +62,20 @@ private:
 	float m_nval;
 	float m_alpha;
 
-	void backprop_iterate(const float *desired_vec);
+	void backpropagation_train(const float *desired_vec);
 	void network_output(float *out_vec) const;
 };
+
+inline int BPNeuralNetwork::get_layer_count() const{
+	return m_layer_count;
+}
+
+inline BPNeuralLayer *BPNeuralNetwork::get_layer(int index) const{
+	if ((index < 0) | (index > get_layer_count() - 1)){
+		return 0;
+	}
+	return layers[index];
+}
 
 inline int BPNeuralNetwork::flag() const{
 	return m_flag;

@@ -1,11 +1,11 @@
 #include "stdafx.h"
-#include "neuralNetwork.h"
-#include "neuron.h"
+#include "BPNeuralNetwork.h"
+#include "BPNeuron.h"
 
 BPNeuralLayer::BPNeuralLayer(int neurons_count): m_neuron_count(neurons_count)
 {
 	for (int i = 0; i < m_neuron_count; i++){
-		neurons.push_back(new BPNeuralNeuron());
+		neurons.push_back(new BPNeuron());
 	}
 }
 
@@ -20,7 +20,7 @@ BPNeuralNetwork::BPNeuralNetwork(int layer_count, int *neurons_per_layer): m_fla
 	m_layer_count = layer_count;
 
 	for(int i = 0; i < m_layer_count; i++){
-		layers.push_back(new BPNeuralLayer(neurons_per_layer[i]);
+		layers.push_back(new BPNeuralLayer(neurons_per_layer[i]));
 	}
 
 }
@@ -37,14 +37,14 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 	if (filepointer) {
 		//scan layer count
 		if((response = fwscanf(filepointer, L"%d", &m_layer_count)) != 1){
-			fclose(fileponter);
+			fclose(filepointer);
 			m_flag = -1;
 			return;
 		}
 		for(int i = 0; i < m_layer_count; i++){
 			//scan nval
 			if((response = fwscanf(filepointer, L"%d", &nval)) != 1){
-				fclose(fileponter);
+				fclose(filepointer);
 				m_flag = -1;
 				return;
 			} else {
@@ -79,7 +79,7 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 		init_links(&add_layers[0], &mult_layers[0], in_func, h_func);
 
 		for(int i = 1; i < m_layer_count; i++){
-			for(int j = 0; j < layers[i]->neurons[i]->get_neuron_count(); j++){
+			for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 				for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
 					if((response = fwscanf(filepointer, L"%f", &w)) != 1){
 						m_flag = 1; //flag = 1 for randomized weights
@@ -112,12 +112,12 @@ void BPNeuralNetwork::randomize_weights(unsigned int random_seed){
 
 	srand(random_seed);
 
-	for(int i = 0; i < m_layer_count; i++){
+	for(int i = 0; i < get_layer_count(); i++){
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 			for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
 				weight = 0xFFF & rand();
 				weight -= 0x800;
-				layers[i]->neurons[n]->inputs[k]->w = (float) weight / 2048.0f;
+				layers[i]->neurons[j]->inputs[k]->w = (float) weight / 2048.0f;
 			}
 		}
 	}
@@ -146,12 +146,12 @@ void BPNeuralNetwork::init_links(const float *add_vec,
 		neuronPtr = layer->neurons[j];
 		
 		//set & add input function with default value
-		neuronPtr->function = in_func;
+		neuronPtr->function_type = in_func;
 		neuronPtr->add_input();
 
 		//set add and multiply (weight) functions if present
 		if(add_vec){
-			neuronPtr->inputs[0]->iadd = add_vec[j];
+			neuronPtr->inputs[0]->in_add = add_vec[j];
 		}
 		if(mul_vec){
 			neuronPtr->inputs[0]->w = mul_vec[j];
@@ -170,7 +170,7 @@ void BPNeuralNetwork::init_links(const float *add_vec,
 		for(int k = 0; k < layer->get_neuron_count(); k++){
 			//set hidden function and add default bias
 			neuronPtr = layer->neurons[k];
-			neuronPtr->function = h_func;
+			neuronPtr->function_type = h_func;
 			neuronPtr->add_bias();
 
 			for(int m = 0; m < prev_layer->get_neuron_count(); m++){
@@ -185,7 +185,7 @@ void BPNeuralNetwork::init_links(const float *add_vec,
 
 	for(int j = 0; j < layer->get_neuron_count(); j++){
 		neuronPtr = layer->neurons[j];
-		neuronPtr->function = h_func;
+		neuronPtr->function_type = h_func;
 		neuronPtr->add_bias();
 		
 		for(int m = 0; m < prev_layer->get_neuron_count(); m++){
@@ -204,9 +204,9 @@ void BPNeuralNetwork::backpropagation_train(const float *desired_vec){
 	float deltaw;
 	float out_val;
 
-	for(int i = 0; i < layers[m_layer_count-1]->get_neuron_count(); i++){
+	for(int i = 0; i < layers[get_layer_count()-1]->get_neuron_count(); i++){
 		//calculate deltas for output layer
-		out_val = layers[m_layer_count-1]->neurons[i]->out_val;
+		out_val = layers[get_layer_count()-1]->neurons[i]->out_val;
 		layers[m_layer_count-1]->neurons[i]->delta = out_val * (desired_vec[i] - out_val) * (1.0f - out_val);
 	}
 
@@ -215,19 +215,19 @@ void BPNeuralNetwork::backpropagation_train(const float *desired_vec){
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 			delta = 0.0f;
 			for(int k = 0; k < layers[i]->neurons[j]->get_output_link_count(); k++){
-				delta += layers[i]->neurons[n]->outputs[k]->w * layers[i]->neurons[j]->outputs[k]->pinput_neuron->delta;
+				delta += layers[i]->neurons[j]->outputs[k]->w * layers[i]->neurons[j]->outputs[k]->input_neuron->delta;
 			}
-			out_val = layers[i]->neurons[n]->out_val;
+			out_val = layers[i]->neurons[j]->out_val;
 			layers[i]->neurons[j]->delta = out_val * delta * (1 - out_val);
 		}
 	}
 
 	//set weights for all layers
-	for(int i = 1; i < m_layer_count; i++){
+	for(int i = 1; i < get_layer_count(); i++){
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 			for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
 				//change: delta = learning_rule * x_in * delta + learning_rate * delta_previous
-				deltaw = nval * layers[i]->neurons[j]->inputs[k]->in_val * layers[i]*neurons[j]->delta;
+				deltaw = nval * layers[i]->neurons[j]->inputs[k]->in_val * layers[i]->neurons[j]->delta;
 				deltaw += alpha * layers[i]->neurons[j]->inputs[k]->deltaw_prev;
 				//set weights
 				layers[i]->neurons[j]->inputs[k]->deltaw_prev = deltaw;
@@ -242,7 +242,7 @@ bool BPNeuralNetwork::train(const float *in_vec, float *out_vec, const float *de
 	float deviation = 0.0f;
 	
 	classify(in_vec, out_vec);
-	for(int i = 0; i < layers[m_layer_count - 1]->get_neuron_count(); i++){
+	for(int i = 0; i < layers[get_layer_count() - 1]->get_neuron_count(); i++){
 		deviation = fabs(out_vec[i] - desired_vec[i]);
 		if (deviation > error){
 			//we have hit error margin, time for backpropagation
@@ -266,43 +266,43 @@ void BPNeuralNetwork::classify(const float *in_vec, float *out_vec){
 		layers[0]->neurons[i]->input_fire();
 	}
 
-	for(int i = 1; i < m_layer_count; i++){
+	for(int i = 1; i < get_layer_count(); i++){
 		for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 			layers[i]->neurons[j]->fire();
 		}
 	}
 
-	get_network_output(out_vec);
+	network_output(out_vec);
 }
 
-void BPNeuralNetwork::get_network_output(float *out_vec) const {
+void BPNeuralNetwork::network_output(float *out_vec) const {
 	
-	for(int i = 0; i < layers[m_layer_count - 1]->get_neuron_count(); i++){
-		out_vec[i] = layers[m_layer_count - 1]->neurons[i]->out_val;
+	for(int i = 0; i < layers[get_layer_count() - 1]->get_neuron_count(); i++){
+		out_vec[i] = layers[get_layer_count() - 1]->neurons[i]->out_val;
 	}
 }
 
-bool BPNeuralNetwork::save_to_file(const wchar_t *filename) const {
-	FILE *filepointer = _wfopen(fname, L"wt");
+bool BPNeuralNetwork::save(const wchar_t *filename) const {
+	FILE *filepointer = _wfopen(filename, L"wt");
 
 	if(filepointer){
 		fwprintf(filepointer, L"%d\n", m_layer_count);
 
-		for(int i = 0; i < m_layer_count; i++){
+		for(int i = 0; i < get_layer_count(); i++){
 			fwprintf(filepointer, L"%d ", layers[i]->get_neuron_count());
 		}
 
 		fwprintf(filepointer, L"\n\n");
-		fwprintf(filepointer, L"%d\n%d\n\n", layers[0]->neurons[0]->function, layers[1]->neurons[0]->function);
+		fwprintf(filepointer, L"%d\n%d\n\n", layers[0]->neurons[0]->function_type, layers[1]->neurons[0]->function_type);
 
-		for(int i = 0; i < m_layer_count; i++){
+		for(int i = 0; i < get_layer_count(); i++){
 			fwprintf(filepointer, L"%f ", layers[0]->neurons[i]->inputs[0]->in_add);
 			fwprintf(filepointer, L"%f\n", layers[0]->neurons[i]->inputs[0]->w);
 		}
 
 		fwprintf(filepointer, L"\n");
 
-		for(int i = 1; i < m_layer_count; i++){
+		for(int i = 1; i < get_layer_count(); i++){
 			for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 				for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
 					fwprintf(filepointer, L"%f\n", layers[i]->neurons[j]->inputs[k]->w);
