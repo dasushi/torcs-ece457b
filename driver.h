@@ -58,7 +58,7 @@ class Driver {
 	public:
 		Driver(int index);
 		~Driver();
-
+		
 		// Callback functions called from TORCS.
 		void initTrack(tTrack* t, void *carHandle, void **carParmHandle, tSituation *s);
 		void newRace(tCarElt* car, tSituation *s);
@@ -105,6 +105,7 @@ class Driver {
 		void initCa();
 		void initCw();
 		void initTireMu();
+		void initNeuralNetworks();
 
 		void computeRadius(float *radius);
 		int isAlone();
@@ -125,6 +126,9 @@ class Driver {
 		static Cardata *cardata;		// Data about all cars shared by all instances.
 		SingleCardata *mycardata;		// Pointer to "global" data about my car.
 		static double currentsimtime;	// Store time to avoid useless updates.
+
+		BPNeuralNetwork accBrakeNetwork;
+		BPNeuralNetwork steerNetwork;
 
 		float currentspeedsqr;	// Square of the current speed_x.
 		float clutchtime;		// Clutch timer.

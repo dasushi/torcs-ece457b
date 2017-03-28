@@ -1,9 +1,9 @@
 #include "stdafx.h"
 #include "trace.h"
 
-#include "signal.h"
-#include "NeuralNetwork.h"
-#include "Neuron.h"
+#include "lib\signal.h"
+#include "lib\neuralNetwork.h"
+#include "lib\neuron.h"
 
 
 //accuracy structure for storing accuracy tallies

@@ -39,9 +39,6 @@ const float Driver::WIDTHDIV = 3.0f;						// [-] Defines the percentage of the t
 const float Driver::SIDECOLL_MARGIN = 3.0f;					// [m] Distance between car centers to avoid side collisions.
 const float Driver::BORDER_OVERTAKE_MARGIN = 0.5f;			// [m]
 const float Driver::OVERTAKE_OFFSET_SPEED = 5.0f;			// [m/s] Offset change speed.
-const float Driver::PIT_LOOKAHEAD = 6.0f;					// [m] Lookahead to stop in the pit.
-const float Driver::PIT_BRAKE_AHEAD = 200.0f;				// [m] Workaround for "broken" pitentries.
-const float Driver::PIT_MU = 0.4f;							// [-] Friction of pit concrete.
 const float Driver::MAX_SPEED = 84.0f;						// [m/s] Speed to compute the percentage of brake to apply.
 const float Driver::MAX_FUEL_PER_METER = 0.0008f;			// [liter/m] fuel consumtion.
 const float Driver::CLUTCH_SPEED = 5.0f;					// [m/s]
@@ -69,10 +66,8 @@ Driver::Driver(int index)
 Driver::~Driver()
 {
 	delete opponents;
-	delete pit;
 	delete [] radius;
 	delete learn;
-	delete strategy;
 	if (cardata != NULL) {
 		delete cardata;
 		cardata = NULL;
@@ -93,13 +88,13 @@ void Driver::initTrack(tTrack* t, void *carHandle, void **carParmHandle, tSituat
 
 	switch (s->_raceType) {
 		case RM_TYPE_PRACTICE:
-			snprintf(buffer, BUFSIZE, "drivers/bt/%d/practice/%s", INDEX, trackname);
+			snprintf(buffer, BUFSIZE, "drivers/neuralDriver/%d/practice/%s", INDEX, trackname);
 			break;
 		case RM_TYPE_QUALIF:
-			snprintf(buffer, BUFSIZE, "drivers/bt/%d/qualifying/%s", INDEX, trackname);
+			snprintf(buffer, BUFSIZE, "drivers/neuralDriver/%d/qualifying/%s", INDEX, trackname);
 			break;
 		case RM_TYPE_RACE:
-			snprintf(buffer, BUFSIZE, "drivers/bt/%d/race/%s", INDEX, trackname);
+			snprintf(buffer, BUFSIZE, "drivers/neuralDriver/%d/race/%s", INDEX, trackname);
 			break;
 		default:
 			break;
@@ -107,12 +102,9 @@ void Driver::initTrack(tTrack* t, void *carHandle, void **carParmHandle, tSituat
 
 	*carParmHandle = GfParmReadFile(buffer, GFPARM_RMODE_STD);
 	if (*carParmHandle == NULL) {
-		snprintf(buffer, BUFSIZE, "drivers/bt/%d/default.xml", INDEX);
+		snprintf(buffer, BUFSIZE, "drivers/neuralDriver/%d/default.xml", INDEX);
 		*carParmHandle = GfParmReadFile(buffer, GFPARM_RMODE_STD);
     }
-
-	// Create a pit stop strategy object.
-	strategy = new SimpleStrategy2();
 
 	// Init fuel.
 	strategy->setFuelAtRaceStart(t, carParmHandle, s, INDEX);
@@ -162,9 +154,6 @@ void Driver::newRace(tCarElt* car, tSituation *s)
 	computeRadius(radius);
 
 	learn = new SegLearn(track, s, INDEX);
-
-	// create the pit object.
-	pit = new Pit(s, this);
 }
 
 
@@ -195,21 +184,22 @@ void Driver::drive(tSituation *s)
 		//TODO: adapt to NN steering point
 		//		INPUT: distance vectors, speed
 		//		OUTPUT: steering angle desired
-		car->_steerCmd = filterSColl(getSteer());
+		car->_steerCmd = getSteer();
 		//TODO: get "NN control [-1,1]" based on sensors
 		//		and determine brake & accel based on polarity
 
 		//brake control: determine if in braking zone,
 		//					filter to avoid collisions & for pit,
 		//					filter for ABS (avoiding skids)
-		car->_brakeCmd = filterABS(filterBrakeSpeed(filterBColl(filterBPit(getBrake()))));
+		float accelBrake = getAccelBrake(s);
+		car->_brakeCmd = filterABS(filterBrakeSpeed(((getBrake(accelBrake)));
 		//if not braking, then determine throttle to apply
 		if (car->_brakeCmd == 0.0f) {
 			//throttle control: get throttle based on ideal targets,
 			//					filter for if being lapped (for other drivers)
 			//					filter to keep on track,
 			//					filter for traction control (avoiding skids)
-			car->_accelCmd = filterTCL(filterTrk(filterOverlap(getAccel())));
+			car->_accelCmd = filterTCL(filterTrk((getAccel()));
 		} else {
 			car->_accelCmd = 0.0f;
   		}
@@ -218,17 +208,6 @@ void Driver::drive(tSituation *s)
 		car->_clutchCmd = getClutch();
 
 	}
-}
-
-
-// Set pitstop commands.
-int Driver::pitCommand(tSituation *s)
-{
-	car->_pitRepair = strategy->pitRepair(car, s);
-	car->_pitFuel = strategy->pitRefuel(car, s);
-	// This should be the only place where the pit stop is set to false!
-	pit->setPitstop(false);
-	return ROB_PIT_IM; // return immediately.
 }
 
 
@@ -317,6 +296,7 @@ float Driver::getDistToSegEnd()
 float Driver::getAccel()
 {
 	if (car->_gear > 0) {
+		vec2f blindspot = bl
 		float allowedspeed = getAllowedSpeed(car->_trkPos.seg);
 		if (allowedspeed > car->_speed_x + FULL_ACCEL_MARGIN) {
 			return 1.0;
@@ -457,21 +437,12 @@ vec2f Driver::getTargetPoint()
 	float length = getDistToSegEnd();
 	float offset = getOffset();
 
-	if (pit->getInPit()) {
-		// To stop in the pit we need special lookahead values.
-		if (currentspeedsqr > pit->getSpeedlimitSqr()) {
-			lookahead = PIT_LOOKAHEAD + car->_speed_x*LOOKAHEAD_FACTOR;
-		} else {
-			lookahead = PIT_LOOKAHEAD;
-		}
-	} else {
-		// Usual lookahead.
-		lookahead = LOOKAHEAD_CONST + car->_speed_x*LOOKAHEAD_FACTOR;
-		// Prevent "snap back" of lookahead on harsh braking.
-		float cmplookahead = oldlookahead - car->_speed_x*RCM_MAX_DT_ROBOTS;
-		if (lookahead < cmplookahead) {
-			lookahead = cmplookahead;
-		}
+	// Usual lookahead.
+	lookahead = LOOKAHEAD_CONST + car->_speed_x*LOOKAHEAD_FACTOR;
+	// Prevent "snap back" of lookahead on harsh braking.
+	float cmplookahead = oldlookahead - car->_speed_x*RCM_MAX_DT_ROBOTS;
+	if (lookahead < cmplookahead) {
+		lookahead = cmplookahead;
 	}
 
 	oldlookahead = lookahead;
@@ -516,145 +487,6 @@ vec2f Driver::getTargetPoint()
 	}
 }
 
-
-// Compute offset to normal target point for overtaking or let pass an opponent.
-float Driver::getOffset()
-{
-	int i;
-	float catchdist, mincatchdist = FLT_MAX, mindist = -1000.0f;
-	Opponent *o = NULL;
-
-	// Increment speed dependent.
-	float incfactor = MAX_INC_FACTOR - MIN(fabs(car->_speed_x)/MAX_INC_FACTOR, (MAX_INC_FACTOR - 1.0f));
-
-	// Let overlap or let less damaged team mate pass.
-	for (i = 0; i < opponents->getNOpponents(); i++) {
-		// Let the teammate with less damage overtake to use slipstreaming.
-		// The position change happens when the damage difference is greater than
-		// TEAM_DAMAGE_CHANGE_LEAD.
-		if (((opponent[i].getState() & OPP_LETPASS) && !opponent[i].isTeamMate()) ||
-			(opponent[i].isTeamMate() && (car->_dammage - opponent[i].getDamage() > TEAM_DAMAGE_CHANGE_LEAD) &&
-			(opponent[i].getDistance() > -TEAM_REAR_DIST) && (opponent[i].getDistance() < -car->_dimension_x) &&
-			car->race.laps == opponent[i].getCarPtr()->race.laps))
-		{
-			// Behind, larger distances are smaller ("more negative").
-			if (opponent[i].getDistance() > mindist) {
-				mindist = opponent[i].getDistance();
-				o = &opponent[i];
-			}
-		}
-	}
-
-	if (o != NULL) {
-		tCarElt *ocar = o->getCarPtr();
-		float side = car->_trkPos.toMiddle - ocar->_trkPos.toMiddle;
-		float w = car->_trkPos.seg->width/WIDTHDIV-BORDER_OVERTAKE_MARGIN;
-		if (side > 0.0f) {
-			if (myoffset < w) {
-				myoffset += OVERTAKE_OFFSET_INC*incfactor;
-			}
-		} else {
-			if (myoffset > -w) {
-				myoffset -= OVERTAKE_OFFSET_INC*incfactor;
-			}
-		}
-		return myoffset;
-	}
-
-
-	// Overtake.
-	for (i = 0; i < opponents->getNOpponents(); i++) {
-		if ((opponent[i].getState() & OPP_FRONT) &&
-			!(opponent[i].isTeamMate() && car->race.laps <= opponent[i].getCarPtr()->race.laps))
-		{
-			catchdist = MIN(opponent[i].getCatchDist(), opponent[i].getDistance()*CATCH_FACTOR);
-			if (catchdist < mincatchdist) {
-				mincatchdist = catchdist;
-				o = &opponent[i];
-			}
-		}
-	}
-
-	if (o != NULL) {
-		// Compute the width around the middle which we can use for overtaking.
-		float w = o->getCarPtr()->_trkPos.seg->width/WIDTHDIV-BORDER_OVERTAKE_MARGIN;
-		// Compute the opponents distance to the middle.
-		float otm = o->getCarPtr()->_trkPos.toMiddle;
-		// Define the with of the middle range.
-		float wm = o->getCarPtr()->_trkPos.seg->width*CENTERDIV;
-
-		if (otm > wm && myoffset > -w) {
-			myoffset -= OVERTAKE_OFFSET_INC*incfactor;
-		} else if (otm < -wm && myoffset < w) {
-			myoffset += OVERTAKE_OFFSET_INC*incfactor;
-		} else {
-			// If the opponent is near the middle we try to move the offset toward
-			// the inside of the expected turn.
-			// Try to find out the characteristic of the track up to catchdist.
-			tTrackSeg *seg = car->_trkPos.seg;
-			float length = getDistToSegEnd();
-			float oldlen, seglen = length;
-			float lenright = 0.0f, lenleft = 0.0f;
-			mincatchdist = MIN(mincatchdist, DISTCUTOFF);
-
-			do {
-				switch (seg->type) {
-				case TR_LFT:
-					lenleft += seglen;
-					break;
-				case TR_RGT:
-					lenright += seglen;
-					break;
-				default:
-					// Do nothing.
-					break;
-				}
-				seg = seg->next;
-				seglen = seg->length;
-				oldlen = length;
-				length += seglen;
-			} while (oldlen < mincatchdist);
-
-			// If we are on a straight look for the next turn.
-			if (lenleft == 0.0f && lenright == 0.0f) {
-				while (seg->type == TR_STR) {
-					seg = seg->next;
-				}
-				// Assume: left or right if not straight.
-				if (seg->type == TR_LFT) {
-					lenleft = 1.0f;
-				} else {
-					lenright = 1.0f;
-				}
-			}
-
-			// Because we are inside we can go to the border.
-			float maxoff = (o->getCarPtr()->_trkPos.seg->width - car->_dimension_y)/2.0-BORDER_OVERTAKE_MARGIN;
-			if (lenleft > lenright) {
-				if (myoffset < maxoff) {
-					myoffset += OVERTAKE_OFFSET_INC*incfactor;
-				}
-			} else {
-				if (myoffset > -maxoff) {
-					myoffset -= OVERTAKE_OFFSET_INC*incfactor;
-				}
-			}
-		}
-	} else {
-		// There is no opponent to overtake, so the offset goes slowly back to zero.
-		if (myoffset > OVERTAKE_OFFSET_INC) {
-			myoffset -= OVERTAKE_OFFSET_INC;
-		} else if (myoffset < -OVERTAKE_OFFSET_INC) {
-			myoffset += OVERTAKE_OFFSET_INC;
-		} else {
-			myoffset = 0.0f;
-		}
-	}
-
-	return myoffset;
-}
-
-
 // Update my private data every timestep.
 void Driver::update(tSituation *s)
 {
@@ -669,28 +501,9 @@ void Driver::update(tSituation *s)
 	NORM_PI_PI(speedangle);
 	mass = CARMASS + car->_fuel;
 	currentspeedsqr = car->_speed_x*car->_speed_x;
-	opponents->update(s, this);
-	strategy->update(car, s);
-	if (!pit->getPitstop()) {
-		pit->setPitstop(strategy->needPitstop(car, s));
-	}
-	pit->update();
-	alone = isAlone();
 	learn->update(s, track, car, alone, myoffset, car->_trkPos.seg->width/WIDTHDIV-BORDER_OVERTAKE_MARGIN, radius);
+	updateNeuralNetworks(s);
 }
-
-
-int Driver::isAlone()
-{
-	int i;
-	for (i = 0; i < opponents->getNOpponents(); i++) {
-		if (opponent[i].getState() & (OPP_COLL | OPP_LETPASS)) {
-			return 0;	// Not alone.
-		}
-	}
-	return 1;	// Alone.
-}
-
 
 // Check if I'm stuck.
 bool Driver::isStuck()
@@ -760,162 +573,6 @@ float Driver::filterBrakeSpeed(float brake)
 	float maxForce = weight + CA*MAX_SPEED*MAX_SPEED;
 	float force = weight + CA*currentspeedsqr;
 	return brake*force/maxForce;
-}
-
-
-// Brake filter for pit stop.
-float Driver::filterBPit(float brake)
-{
-	if (pit->getPitstop() && !pit->getInPit()) {
-		float dl, dw;
-		RtDistToPit(car, track, &dl, &dw);
-		if (dl < PIT_BRAKE_AHEAD) {
-			float mu = car->_trkPos.seg->surface->kFriction*TIREMU*PIT_MU;
-			if (brakedist(0.0f, mu) > dl) {
-				return 1.0f;
-			}
-		}
-	}
-
-	if (pit->getInPit()) {
-		float s = pit->toSplineCoord(car->_distFromStartLine);
-		// Pit entry.
-		if (pit->getPitstop()) {
-			float mu = car->_trkPos.seg->surface->kFriction*TIREMU*PIT_MU;
-			if (s < pit->getNPitStart()) {
-				// Brake to pit speed limit.
-				float dist = pit->getNPitStart() - s;
-				if (brakedist(pit->getSpeedlimit(), mu) > dist) {
-					return 1.0f;
-				}
-			} else {
-				// Hold speed limit.
-				if (currentspeedsqr > pit->getSpeedlimitSqr()) {
-					return pit->getSpeedLimitBrake(currentspeedsqr);
-				}
-			}
-			// Brake into pit (speed limit 0.0 to stop)
-			float dist = pit->getNPitLoc() - s;
-			if (pit->isTimeout(dist)) {
-				pit->setPitstop(false);
-				return 0.0f;
-			} else {
-				if (brakedist(0.0f, mu) > dist) {
-					return 1.0f;
-				} else if (s > pit->getNPitLoc()) {
-					// Stop in the pit.
-			 		return 1.0f;
-				}
-			}
-		} else {
-			// Pit exit.
-			if (s < pit->getNPitEnd()) {
-				// Pit speed limit.
-				if (currentspeedsqr > pit->getSpeedlimitSqr()) {
-					return pit->getSpeedLimitBrake(currentspeedsqr);
-				}
-			}
-		}
-	}
-
-	return brake;
-}
-
-
-// Brake filter for collision avoidance.
-float Driver::filterBColl(float brake)
-{
-	float mu = car->_trkPos.seg->surface->kFriction;
-	int i;
-	for (i = 0; i < opponents->getNOpponents(); i++) {
-		if (opponent[i].getState() & OPP_COLL) {
-			if (brakedist(opponent[i].getSpeed(), mu) > opponent[i].getDistance()) {
-				return 1.0f;
-			}
-		}
-	}
-	return brake;
-}
-
-
-// Steer filter for collision avoidance.
-float Driver::filterSColl(float steer)
-{
-	int i;
-	float sidedist = 0.0f, fsidedist = 0.0f, minsidedist = FLT_MAX;
-	Opponent *o = NULL;
-
-	// Get the index of the nearest car (o).
-	for (i = 0; i < opponents->getNOpponents(); i++) {
-		if (opponent[i].getState() & OPP_SIDE) {
-			sidedist = opponent[i].getSideDist();
-			fsidedist = fabs(sidedist);
-			if (fsidedist < minsidedist) {
-				minsidedist = fsidedist;
-				o = &opponent[i];
-			}
-		}
-	}
-
-	// If there is another car handle the situation.
-	if (o != NULL) {
-		float d = fsidedist - o->getWidth();
-		// Near, so we need to look at it.
-		if (d < SIDECOLL_MARGIN) {
-			/* compute angle between cars */
-			tCarElt *ocar = o->getCarPtr();
-			float diffangle = ocar->_yaw - car->_yaw;
-			NORM_PI_PI(diffangle);
-			// We are near and heading toward the car.
-			if (diffangle*o->getSideDist() < 0.0f) {
-				const float c = SIDECOLL_MARGIN/2.0f;
-				d = d - c;
-				if (d < 0.0f) {
-					d = 0.0f;
-				}
-
-				// Steer delta required to drive parallel to the opponent.
-				float psteer = diffangle/car->_steerLock;
-				myoffset = car->_trkPos.toMiddle;
-
-				// Limit myoffset to suitable limits.
-				float w = o->getCarPtr()->_trkPos.seg->width/WIDTHDIV-BORDER_OVERTAKE_MARGIN;
-				if (fabs(myoffset) > w) {
-					myoffset = (myoffset > 0.0f) ? w : -w;
-				}
-				
-				// On straights the car near to the middle can correct more, in turns the car inside
-				// the turn does (because if you leave the track on the turn "inside" you will skid
-				// back to the track.
-				if (car->_trkPos.seg->type == TR_STR) {
-					if (fabs(car->_trkPos.toMiddle) > fabs(ocar->_trkPos.toMiddle)) {
-						// Its me, I do correct not that much.
-						psteer = steer*(d/c) + 1.5f*psteer*(1.0f - d/c);
-					} else {
-						// Its the opponent, so I correct more.
-						psteer = steer*(d/c) + 2.0f*psteer*(1.0f - d/c);
-					}
-				} else {
-					// Who is outside, heavy corrections are less dangerous
-					// if you drive near the middle of the track.
-					float outside = car->_trkPos.toMiddle - ocar->_trkPos.toMiddle;
-					float sign = (car->_trkPos.seg->type == TR_RGT) ? 1.0f : -1.0f;
-					if (outside*sign > 0.0f) {
-						psteer = steer*(d/c) + 1.5f*psteer*(1.0f - d/c);
-					} else {
-						psteer = steer*(d/c) + 2.0f*psteer*(1.0f - d/c);
-					}
-				}
-
-				if (psteer*steer > 0.0f && fabs(steer) > fabs(psteer)) {
-					return steer;
-				} else {
-					return psteer;
-				}
-			}
-		}
-	}
-	return steer;
 }
 
 

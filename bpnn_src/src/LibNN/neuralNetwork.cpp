@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "network.h"
+#include "neuralNetwork.h"
 #include "neuron.h"
 
 BPNeuralLayer::BPNeuralLayer(int neurons_count): m_neuron_count(neurons_count)
