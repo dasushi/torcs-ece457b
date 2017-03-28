@@ -23,8 +23,7 @@
 #include "CarControl.h"
 #include "SimpleParser.h"
 #include "WrapperBaseDriver.h"
-#include "BPNeuralNetwork.h"
-#include "BPNeuron.h"
+#include "bpnn/src/LibNN/BPNeuralNetwork.h"
 
 #define PI 3.14159265
 
@@ -105,7 +104,11 @@ private:
 	static const float clutchMaxModifier;
 	static const float clutchMaxTime;
 	
-	BPNeuralNetwork* neuralNetwork;
+	/* accel & Brake Neural Network */
+	BPNeuralNetwork* accBrakeNetwork;
+	
+	/* accel & Brake Neural Network */
+	BPNeuralNetwork* steerNetwork;
 
 	// counter of stuck steps
 	int stuck;
@@ -119,7 +122,10 @@ private:
 	// Solves the steering subproblems
 	float getSteer(CarState &cs);
 	
-	// Solves the gear changing subproblems
+	//Solves the steering angle using the neural network
+	float getNeuralSteer(CarState &cs);
+	
+	// Solves for acceleration 
 	float getAccel(CarState &cs);
 	
 	//Gets Acc/Brake prediction from NeuralNetwork

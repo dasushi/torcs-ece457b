@@ -19,7 +19,7 @@
 /* Gear Changing Constants*/
 const int NeuralDriver::gearUp[6]=
     {
-        8000,8250,8500,8750,9000,0
+        8500,8250,8000,8000,8000,0
     };
 const int NeuralDriver::gearDown[6]=
     {
@@ -94,6 +94,13 @@ NeuralDriver::getSteer(CarState &cs)
         return (targetAngle)/steerLock;
 
 }
+
+float
+NeuralDriver::getNeuralSteer(CarState &cs)
+{
+	
+}
+
 float
 NeuralDriver::getAccel(CarState &cs)
 {
@@ -109,18 +116,18 @@ NeuralDriver::getAccel(CarState &cs)
 
         float targetSpeed;
 
-        // track is straight and enough far from a turn so goes to max speed
+        // track is straight and far enough from a turn, go to max speed
         if (cSensor>maxSpeedDist || (cSensor>=rxSensor && cSensor >= sxSensor))
 			// accel/brake command is expontially scaled w.r.t. the difference between target speed and current one
-			return 2/(1+exp(cs.getSpeedX() - maxSpeed)) - 1;
+			return 1/(1+exp(cs.getSpeedX() - maxSpeed)); //[0, 1]
         else
         {
-			//track is not straight, get neural network steering prediction
-			return getAccBrakePrediction();
+			//track is not straight, get neural network steering prediction [0,1] -> [0,0.5] brakes [0.5,1.0] accel
+			return getAccBrakePrediction(cs);
         }
     }
     else
-        return 0.3; // when out of track returns a moderate acceleration command
+        return 0.65; // when out of track returns a moderate acceleration command
 
 }
 
@@ -135,7 +142,7 @@ NeuralDriver::wDrive(CarState cs)
     }
     else
     {
-    	// if not stuck reset stuck counter
+    	// reset stuck counter
         stuck = 0;
     }
 
@@ -182,16 +189,18 @@ NeuralDriver::wDrive(CarState cs)
         
         // set accel and brake from the joint accel/brake command 
         float accel,brake;
-        if (accel_and_brake>0)
+        if (accel_and_brake>=0.5f)
         {
-            accel = accel_and_brake;
+			//scale from [0.5,1] to [1,2] to [0,1]
+            accel = (accel_and_brake * 2) - 1;
             brake = 0;
         }
         else
         {
             accel = 0;
             // apply ABS to brake
-            brake = filterABS(cs,-accel_and_brake);
+			//scale from [0,0.5] to [0,1.0] to [-1.0,0] to [0, 1.0]
+            brake = filterABS(cs,-((accel_and_brake * 2)-1.0));
         }
 
         // Calculate clutching
@@ -300,4 +309,7 @@ NeuralDriver::init(float *angles)
 			angles[18-i]=20-(i-5)*5;
 	}
 	angles[9]=0;
+	
+	steerNetwork = new BPNeuralNetwork(L"steerNetwork.nn");
+	accBrakeNetwork = new BPNeuralNetwork(L"accBrakeNetwork.nn");
 }
