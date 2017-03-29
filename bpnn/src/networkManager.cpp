@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "trace.h"
 
-#include "Lib\signal.h"
 #include "LibNN\BPNeuralNetwork.h"
 #include "LibNN\BPNeuron.h"
 
@@ -12,20 +11,20 @@ typedef struct _accuracy {
 	float acc;
 } ACCURACY, *PACCURACY;
 
-//wchar_t normalization_type[][20] = {L"zscore",L"minmax",L"energy",L"sigmoidal"};
-//enum NORMALIZATION {NONE, ZSCORE, MINMAX, ENERGY, SIGMOIDAL};
+wchar_t normalization_type[][20] = {L"zscore",L"minmax",L"energy",L"sigmoidal"};
+enum NORMALIZATION {NONE, ZSCORE, MINMAX, ENERGY, SIGMOIDAL};
 
 class BPNeuralNetwork *neuralNet = 0;
-vector<CSignal *> signals;
 
 int normalization_val = 0;
 int validation_type = 0;
-int vector_dim = 0;
+int vector_dim = 6;
 
 //train, validate, and test methods
 void train(int argc, wchar_t* argv[]);
 void validate(PRECORD record, float TH, float *accuracy, PACCURACY paccuracy);
 void set_validation(PRECORD valid, PRECORD train, float p);
+void split_train(PRECORD newRecord, PRECORD train, float p);
 void set_normalization(RECORD *record, BPNeuralNetwork *networkPtr);
 void dump_sets(PRECORD train, PRECORD valid, PRECORD test);
 void test(int argc, wchar_t* argv[]);
@@ -33,7 +32,7 @@ float gmean(float i, int j);
 
 //IO methods
 void get_file_name(wchar_t *path, wchar_t *name);
-void read_class(FILE *filepointer, PRECORD record, int c = 0);
+void read_file(FILE *filepointer, PRECORD record);
 void msec_to_time(int msec, int &hour, int &minute, int &second, int &msOut); 
 int read_line(wchar_t *buffer, FILE *file, int *c = 0);
 int parse_path(wchar_t *path, wchar_t *directory, wchar_t *filename);
@@ -45,25 +44,23 @@ int _tmain(int argc, wchar_t* argv[]){
 	if (argc == 1) {
 		
 		wprintf(L" Usage:\n");
-		wprintf(L"  ann1dn.exe t net.nn datafile 3000 [tst.txt][val.txt][TH [0.5]][val type [mse]] [norm [0]] [err [0.05]] \n");
-		wprintf(L"  ann1dn.exe r net.nn testcls [TH [0.5]] [norm [0]]\n\n");
+		wprintf(L"  ann1dn.exe t net.nn datafile 3000 [norm [0]] [err [0.05]] \n");
+		wprintf(L"  ann1dn.exe r net.nn testcls [norm [0]]\n\n");
 		wprintf(L"\n argv[1] t - train\n");
 		wprintf(L" [2] network conf file\n");
-		wprintf(L" [3] cls input data files [0.9]\n");
+		wprintf(L" [3] input.csv data file \n");
 		//wprintf(L" [4] cls2 output data files [0.1]\n");
 		wprintf(L" [4] epochs count\n");
-		wprintf(L" [5] opt [validation class]\n");
-		wprintf(L" [6] opt [test class]\n");
-		wprintf(L" [7] opt [validation TH 0.5]\n");
-		wprintf(L" [8] opt [validation metric mse]\n");
-		//wprintf(L" [10] opt [norm]: [0-no], 1-zscore, 2-minmax, 3-energy, 4-softmax\n");
-		wprintf(L" [9] opt [error tolerance cls]: default +- 0.05 \n\n");
+		//wprintf(L" [5] opt [validation TH 0.5]\n");
+		//wprintf(L" [6] opt [validation metric mse]\n");
+		wprintf(L" [5] opt [norm]: [0-no], 1-zscore, 2-minmax, 3-energy, 4-softmax\n");
+		wprintf(L" [6] opt [error tolerance cls]: default +- 0.05 \n\n");
 
 		wprintf(L" argv[1] r - run\n");
 		wprintf(L" [2] network conf file\n");
-		wprintf(L" [3] cls input files\n");
-		wprintf(L" [4] opt [validation TH 0.5]\n");
-		//wprintf(L" [5] opt [norm]: [0-no], 1-minmax, 2-zscore, 3-softmax, 4-energy\n\n");
+		wprintf(L" [3] input.csv file\n");
+		//wprintf(L" [4] opt [validation TH 0.5]\n");
+		wprintf(L" [4] opt [norm]: [0-no], 1-zscore, 2-minmax, 3-energy, 4-softmax\n\n");
 
 
 		/*wprintf(L" metrics: [0 - mse, optional]\n");
@@ -101,95 +98,43 @@ void train(int argc, wchar_t *argv[]){
 	bool test = false;
 
 	//using optional arguments
-	if(argc >= 6){
-		if(wcslen(argv[5]) > 1){
-			//load validation set from argument
-			FILE *validation_set = _wfopen(argv[5], L"rt");
-			if(validation_set){
-				read_class(validation_set, &validateRecord);
-				if(validateRecord.entries.size() > 0){
-					wprintf(L"Validation Record Size: %dm TH: %.2f\n", 
-								validateRecord.entries.size(), TH);
-				} else {
-					validation = true;
-				}
-			} else {
-				//unable to load file
-				wprintf(L"Error opening validation set %s\n", argv[5]);
-				exit(1);
-			}
-
-			TH = float(_wtof(argv[7]));
-			validation_type = _wtoi(argv[8]);
-
-			if(argc >= 10){
-				//load error + normalization
-				error = float(_wtof(argv[9]));
-				//normalization_val = _wtoi(argv[10]);
-			//} else if(argc >= 11){
-				//normalization_val = _wtoi(argv[10]);
-			}
-			FILE *testSetFile = _wfopen(argv[6], L"rt");
-			if(testSetFile){
-				read_class(testSetFile, &testRecord);
-				if(!(testRecord.entries.size())){
-					test = true;
-				} else {
-					wprintf(L"Test size: %d files\n", 
-						testRecord.entries.size());
-				}
-			} else {
-				wprintf(L"Failed to open test record file %s \n", argv[7]);
-				exit(1);
-			}
-		} else if (argc >= 6){
-			//normalization_val = _wtoi(argv[6]);
-			error = float(_wtof(argv[5]));
-		//} else {
-			//normalization_val = _wtoi(argv[6]);
+	if(argc > 5){
+		normalization_val = _wtoi(argv[5]);
+		if(argc > 6){
+			error = float(_wtof(argv[6]));
 		}
 	}
 
 	wprintf(L"Loading CLS data\n");
 	FILE *inputData;
-	//FILE *clsData2;
 
 	inputData = _wfopen(argv[3], L"rt");
-	//clsData2 = _wfopen(argv[4], L"rt");
 
-	if(!(inputData)){// && clsData2)){
-		wprintf(L"Loading CLS files failed: %s\n", argv[3]);// 2: %s\n", argv[3], argv[4]);
+	if(!(inputData)){
+		wprintf(L"Loading Input data file failed: %s\n", argv[3]);
 	} else {
-		read_class(inputData, &trainRecord, 1);
-		//read_class(clsData2, &trainRecord, 2);
+		read_file(inputData, &trainRecord);
 	}
 
 	if(!(trainRecord.entries.size() > 0)){
 		wprintf(L"Train Record is empty: %s %s\n", argv[3], argv[4]);
 		exit(1);
-	/*} else if (trainRecord.clasnum.size() != 2){
-		wprintf(L"Incorrect class number loaded. 2 Classes required \n", 
-			trainRecord.clasnum.size()); 
-		exit(1);*/
 	} 
 
 	wprintf(L"Train Class file loaded. Count: %d samples\n",
-		trainRecord.entries[0]->size);
+		trainRecord.entries.size());
 
 	//set test-train ratio depending on validation & test data
-	if(!validation && test){
-		set_validation(&testRecord, &trainRecord, 25.0f);
-		set_validation(&validateRecord, &trainRecord, 35.0f);
-	} else if (validation && !test) {
-		set_validation(&validateRecord, &trainRecord, 50.0f);
-	} else {
-		set_validation(&testRecord, &trainRecord, 50.0f);
-	}
+	//25% test, 75% train
+	split_train(&testRecord, &trainRecord, 25.0f);
+	//26.25% validate, 48.75% train, 25% test
+	split_train(&validateRecord, &trainRecord, 35.0f);
 	
 	dump_sets(&trainRecord, &validateRecord, &testRecord);
 
 	//create network with specified filename
-	neuralNet = new BPNeuralNetwork(argv[2]); 
+	wchar_t* networkName = argv[2];
+	neuralNet = new BPNeuralNetwork(networkName); 
 
 	if(neuralNet->flag() < 0){
 		wprintf(L"Loading network %s failed\n", argv[2]);
@@ -209,14 +154,14 @@ void train(int argc, wchar_t *argv[]){
 			}
 	}
 
-	/*if(normalization_val){
+	if(normalization_val){
 		//energy normalization exception
 		if(normalization_val != 3){
 			wprintf(L"Starting normalization %s\n",
 				normalization_type[normalization_val - 1]);
 			set_normalization(&trainRecord, neuralNet);
 		}
-	}*/
+	}
 
 	wprintf(L"Training network\n");
 	//initialize vars for training loop
@@ -226,7 +171,7 @@ void train(int argc, wchar_t *argv[]){
 	int index = 0;
 	float val = 0.0f;
 	int epoch = 0;
-	int step = 0;
+	int size = 0;
 	int epoch_count = 0;
 	int max_epoch = 0;
 	int done = 0;
@@ -244,149 +189,116 @@ void train(int argc, wchar_t *argv[]){
 	memset(&paccuracy, 0, sizeof(ACCURACY));
 	memset(&tempaccuracy, 0, sizeof(ACCURACY));
 
-	int currentTime = GetTickCount();
+	//int currentTime = GetTickCount();
 
-	step = 2 * (int)trainRecord.indices[0].size();
+	size = (int)trainRecord.entries.size();
 
-	epoch_count = _wtoi(argv[5]);
-	epoch = epoch_count * step;
-	while(epoch){
-		//if(x > 1){
-		//	x = 0;
-		//}
-		i++;
-		//first class
-		//if(x == 0){
-			y = i % trainRecord.indices[0].size();
-		//} else if (x == 1){ //second class
-		//	y = i % trainRecord.indices[1].size();
-		//}
+	epoch_count = _wtoi(argv[4]);
+	int per_epoch = size / epoch_count;
+	//epoch = epoch_count / size;
+	for(int epoch = 0; epoch < epoch_count; epoch++){
+		for(int run = 0; run < per_epoch; run++){
+			in_vec = trainRecord.entries.at(epoch * per_epoch + run)->vec;
+			val = trainRecord.entries.at(epoch * per_epoch + run)->val;
+			desired_vec[0] = val;
+			//wprintf(L"Epoch: %d record: %d val: %f\n", epoch, epoch * per_epoch + run, val);
 
-		index = trainRecord.indices[0].at(y);
-		in_vec = trainRecord.entries[index]->vec;
-		
-		val = trainRecord.entries[index]->val;
-		desired_vec[0] = val;
-
-		neuralNet->train(in_vec, out_vec, desired_vec, error);
-		epoch--;		
-		//if(val == 1){
+			neuralNet->train(in_vec, out_vec, desired_vec, error);
 			out_vec1[0] += out_vec[0];
-		/*} else if (val == 2){
-			out_vec2[0] += out_vec[0];
-		}*/
-		//until 0 epochs
-		if (!(epoch % step)){
-			float mul_out1 = out_vec1[0];
-			out_vec1[0] = 0.0f;
-			//mul_out1 = mul_out1 / (float(step) / 2.0f);
-
-			//float mul_out2 = out_vec2[0];
-			//out_vec2[0] = 0.0f;
-			//mul_out2 = mul_out2 / (float(step) / 2.0f);
-
-			if(done == 10){
-				break;
-			}
-
-			//if(!(fabsl(mul_out2 - 0.1f) > error || fabsl(mul_out1 - 0.9f) > error)){
-			//	done++;
-			//} else {
-			//	done = 0;
-			//}
-
-			if(validateRecord.entries.size()){
-				//if(mul_out1 > TH){// && mul_out2 < TH){
-					validate(&validateRecord, TH, &tmp_accuracy, &tempaccuracy); 
-					if(tmp_accuracy >= accuracy){
-						accuracy = tmp_accuracy;
-						max_epoch = epoch_count - (epoch / step);
-						memcpy(&paccuracy, &tempaccuracy, sizeof(ACCURACY));
-						if(!neuralNet->save(L"maxaccuracy.nn")){
-							wprintf(L"Failed to save maxaccuracy.nn results\n");
-						}
-					}
-					//Print max accuracy record
-					wprintf(L"Max accuracy: %.2f (epoch %d) mse: %.2f\n", 
-						accuracy, max_epoch, paccuracy.mse);//, paccuracy.sqe,
-						//paccuracy.spec, paccuracy.acc);
-				//} else {
-				//	wprintf(L"\n");
-				//}
-			} else {
-				wprintf(L"\n");
-			}
-
-
-			//for(int j = 0; j < (int)trainRecord.indices.size(); j++){
-				random_shuffle(trainRecord.indices[0].begin(), trainRecord.indices[0].end());
-			//}
-
-			//exit on keyboard command
-			if(kbhit() && _getwch() == 'q'){
-				epoch = 0;
-			}
 		}
+
+		float mul_out1 = out_vec1[0];
+		out_vec1[0] = 0.0f;
+
+		if(validateRecord.entries.size()){
+			//if(mul_out1 > TH){// && mul_out2 < TH){
+				validate(&validateRecord, TH, &tmp_accuracy, &tempaccuracy); 
+				if(tmp_accuracy >= accuracy){
+					accuracy = tmp_accuracy;
+					max_epoch = epoch;
+					memcpy(&paccuracy, &tempaccuracy, sizeof(ACCURACY));
+					if(!neuralNet->save(L"maxaccuracy.nn")){
+						wprintf(L"Failed to save maxaccuracy.nn results\n");
+					}
+				}
+				//Print max accuracy record
+				wprintf(L"Max accuracy: %.2f (epoch %d) mse: %.2f\n", 
+					accuracy, max_epoch, paccuracy.mse);//, paccuracy.sqe,
+					//paccuracy.spec, paccuracy.acc);
+			//} else {
+			//	wprintf(L"\n");
+			//}
+		} else {
+			wprintf(L"\n");
+		}
+
+
+		//for(int j = 0; j < (int)trainRecord.indices.size(); j++){
+		//	random_shuffle(trainRecord.entries.begin(), trainRecord.entries.end());
+		//}
 	}
 
-	int hour;
-	int min;
-	int second;
-	int msecond;
-	msec_to_time(GetTickCount() - currentTime, hour, min, second, msecond);
+	//int hour;
+	//int min;
+	//int second;
+	//int msecond;
+	//msec_to_time(GetTickCount() - currentTime, hour, min, second, msecond);
 	if(epoch){
 		wprintf(L"Training completed!\n");
 	}
 	if(!neuralNet->save(argv[2])){
 		wprintf(L"Failed to save network %s \n", argv[2]);
 	}
-	BPNeuralNetwork* maxAccuracy = new BPNeuralNetwork(L"maxaccuracy.bp");
-	if(!maxAccuracy->flag()){
+	wchar_t maxName[_MAX_PATH] = L"max";
+	wcscat(maxName, networkName); 
+	wprintf(L"maxNetwork: %s\n", maxName);
+	BPNeuralNetwork* maxAccuracy = new BPNeuralNetwork(maxName);
+	if(maxAccuracy->flag() != -1){
 		wprintf(L"\n\nMaxAccuracy classification results:\n");
 		validate(&trainRecord, TH, &accuracy, &paccuracy);
-		wprintf(L"Training set: %d %d, mse: %.2f\n", 
-			trainRecord.indices[0].size(), trainRecord.indices[1].size(), 
-			paccuracy.acc); //paccuracy.spec, paccuracy.pp, 
+		wprintf(L"Training set: %d, mse: %.2f, acc: %.2f\n", 
+			trainRecord.entries.size(),
+			paccuracy.mse, paccuracy.acc); //paccuracy.spec, paccuracy.pp, 
 			//paccuracy.np, paccuracy.acc);
 		if(validateRecord.entries.size()){
 			validate(&validateRecord, TH, &accuracy, &paccuracy);
-			wprintf(L"Validation set: %d %d, mse: %.2f\n", 
-			validateRecord.indices[0].size(), validateRecord.indices[1].size(), 
-			paccuracy.acc);//, paccuracy.spec, paccuracy.pp, 
+			wprintf(L"Validation set: %d, mse: %.2f, acc: %.2f\n", 
+			validateRecord.entries.size(),
+			paccuracy.mse, paccuracy.acc);//, paccuracy.spec, paccuracy.pp, 
 			//paccuracy.np, paccuracy.acc);
 			
 		}
 		if(testRecord.entries.size()){
 			validate(&testRecord, TH, &accuracy, &paccuracy);
-			wprintf(L"Test set: %d %d, mse: %.2f\n", 
-			validateRecord.indices[0].size(), validateRecord.indices[1].size(), 
-			paccuracy.acc);
+			wprintf(L"Test set: %d, mse: %.2f, acc: %.2f\n", 
+			testRecord.entries.size(),
+			paccuracy.mse, paccuracy.acc);
 			
 		}
 	} else {
 		wprintf(L"Failed loading MaxAccuracy network during classification\n");
 	}
-	neuralNet = new BPNeuralNetwork(argv[2]);
-	if(!neuralNet->flag()){
+	neuralNet = new BPNeuralNetwork(networkName);
+	if(neuralNet->flag() != -1){
 		wprintf(L"\n\nBPNetwork classification results:\n");
 		validate(&trainRecord, TH, &accuracy, &paccuracy);
-		wprintf(L"Training set: %d %d, mse: %.2f\n", 
-			validateRecord.indices[0].size(), validateRecord.indices[1].size(), 
-			paccuracy.acc);//, paccuracy.spec, paccuracy.pp, 
+		wprintf(L"Training set: %d, mse: %.2f, acc: %.2f\n", 
+			trainRecord.entries.size(), 
+			paccuracy.mse, paccuracy.acc);//, paccuracy.spec, paccuracy.pp, 
 			//paccuracy.np, paccuracy.acc);
 		if(validateRecord.entries.size()){
 			validate(&validateRecord, TH, &accuracy, &paccuracy);
-			wprintf(L"Validation set: %d %d, mse: %.2f\n", 
-			validateRecord.indices[0].size(), validateRecord.indices[1].size(), 
-			paccuracy.acc);//, paccuracy.spec, paccuracy.pp, 
+			wprintf(L"Validation set: %d, mse: %.2f, acc: %.2f\n", 
+				validateRecord.entries.size(), 
+				paccuracy.acc);//, paccuracy.spec, paccuracy.pp, 
 			//paccuracy.np, paccuracy.acc);
 			
 		}
 		if(testRecord.entries.size()){
 			validate(&testRecord, TH, &accuracy, &paccuracy);
-			wprintf(L"Test set: %d %d, mse: %.2f\n", 
-			validateRecord.indices[0].size(), validateRecord.indices[1].size(), 
-			paccuracy.acc);//, paccuracy.spec, paccuracy.pp, 
+			wprintf(L"Test set: %d , mse: %.2f, acc: %.2f\n", 
+				testRecord.entries.size(), 
+				paccuracy.mse, paccuracy.acc);//, paccuracy.spec, paccuracy.pp, 
 			//paccuracy.np, paccuracy.acc);
 			
 		}
@@ -426,7 +338,7 @@ void validate(PRECORD record, float TH, float *accuracy, PACCURACY paccuracy){
 		//TODO: modify to using scalar/continuous output value, directly compare 
 		//		to scalar validation value
 		float pred_val = out_vec[0];
-		float compare_val = record->entries[i]->val;
+		float compare_val = record->entries.at(i)->val;
 
 		if(compare_val){
 			mse += (pred_val - compare_val) * (pred_val - compare_val);
@@ -441,10 +353,12 @@ void validate(PRECORD record, float TH, float *accuracy, PACCURACY paccuracy){
 			}
 		}
 	}
-	mse = mse / (float)size;
+	mse = 100.0f * (mse / (float)size);
 	//mean squared error
 	*accuracy = 1.0f / mse;
-	wprintf(L"MSE Accuracy: %.2f\n", mse);
+	paccuracy->acc = 100.0f * (TOTALPOS / (UNDERSHOOT + OVERSHOOT));
+	paccuracy->mse = mse;
+	wprintf(L"MSE Accuracy: %.2f Close: %d Under: %d Over: %d \n", mse, TOTALPOS, UNDERSHOOT, OVERSHOOT);
 	
 
 
@@ -514,9 +428,9 @@ void test(int argc, wchar_t* argv[]){
 	if(argc >= 6){
 		normalization_val = _wtoi(argv[5]);
 	}
-	FILE *clas1 = _wfopen(argv[3], L"rt");
-	if(clas1){
-		read_class(clas1, &testRecord);
+	FILE *inputData = _wfopen(argv[3], L"rt");
+	if(inputData){
+		read_file(inputData, &testRecord);
 	} else {
 		wprintf(L"Error loading test record %s\n", argv[3]);
 		exit(1);
@@ -599,9 +513,9 @@ void test(int argc, wchar_t* argv[]){
 			}
 		}
 	}
-	mse = mse / (float)size;
+	mse = 100.0f * mse / (float)size;
 	acc = mse;
-	wprintf(L"MSE Accuracy: %.2f\n", mse);
+	wprintf(L"MSE Accuracy: %.2f Close: %d Under: %d Over: %d \n", mse, TOTALPOS, UNDERSHOOT, OVERSHOOT);
 
 	/*if(TOTALPOS){
 		sqe = float (TOTALPOS) / float (TOTALPOS + FALSENEG);
@@ -628,9 +542,27 @@ void test(int argc, wchar_t* argv[]){
 
 }
 
+void split_train(PRECORD newRecord, PRECORD trainRecord, float p){
+	int newSize = int((p/100.0f) * (float)trainRecord->entries.size());
+	wprintf(L"Train set size: %d new Size: %d\n", trainRecord->entries.size(), newSize);
+	if(newSize < 1){
+		wprintf(L"Error: one of the validation sets is of 0 length\n");
+		return;
+	}
+	PENTRY swap;
+	newRecord->entries.resize(newSize);
+	for(int i = 0; i < newSize; i++){
+		//move i'th element from train record to new record
+		swap = trainRecord->entries.at(i);
+		newRecord->entries.push_back(swap);
+		//delete ith element
+		trainRecord->entries.erase(trainRecord->entries.begin() + i);
+	}
+	//trainRecord->entries.resize(trainRecord->entries.size() - newSize);
+}
 
 void set_validation(PRECORD valRecord, PRECORD trainRecord, float p){
-	int clas1 = int((p/100.0f) * (float)trainRecord->indices[0].size());
+	int clas1 = int((p/100.0f) * (float)trainRecord->entries.size());
 	wprintf(L"Validation set size: clas1 %d \n", clas1);
 	if(clas1 < 1){
 		wprintf(L"Error: one of the validation sets is of 0 length\n");
@@ -644,10 +576,10 @@ void set_validation(PRECORD valRecord, PRECORD trainRecord, float p){
 	indices.resize(clas1);
 
 	//shuffle both class vectors
-	random_shuffle(trainRecord->indices[0].begin(), trainRecord->indices[0].end());
+	random_shuffle(trainRecord->entries.begin(), trainRecord->entries.end());
 	//random_shuffle(trainRecord->indices[1].begin(), trainRecord->indices[1].end());
 
-	valRecord->indices.push_back(indices);
+	/*valRecord->indices.push_back(indices);
 	for(int i = 0; i < clas1; i++){
 		int index = trainRecord->indices[0].at(i);
 		valRecord->indices[0].at(i) = i;
@@ -655,7 +587,7 @@ void set_validation(PRECORD valRecord, PRECORD trainRecord, float p){
 		valRecord->entries[index] = 0;
 	}	
 	trainRecord->indices[0].erase(trainRecord->indices[0].begin(),
-			trainRecord->indices[0].begin() + clas1);
+			trainRecord->indices[0].begin() + clas1);*/
 
 	/*indices.resize(clas2);
 	valRecord->indices.push_back(indices);
@@ -773,149 +705,48 @@ int read_line(FILE *f, wchar_t *buff, int *c)
 }
 
 /*
-    format 1           //data stored in separate files: ECG,FOUR
-     file1 [class]
-     file2 [class]
-     ...
-
-    format 2           //data stored in this file - [name] [class]
-													[val1] [val2] ...
-     file1 [class]
-      vec1 ...
-     file2 [class]
-      vec1 ...
+    format         //data stored in this file - [name] [val]
+													[vec1] [vec2] ...
+     file1 [val]
+      [vec1] [vec2] ...
+     file2 [val]
+      [vec1] [vec2]...
      ..
-     read class data to PTSTREC struct
+     read class data to PRECORD struct
                                         */
-void read_class(FILE *filepointer, PRECORD record, int c)
+void read_file(FILE *filepointer, PRECORD record)
 {
-        wchar_t ustr[_MAX_PATH], *pstr;
+        //wchar_t ustr[_MAX_PATH], *pstr;
         int res = 1;
-		int clas;
+		int vector_dim = 6;
+		//int clas;
 
-        int entrsize = (int)record->entries.size();   //size from previous read iteration
-		
-        while (res > 0) {
-                res = read_line(filepointer, ustr, &clas);
-                if (res > 0) {
-                        //if (c && !clas) //put default if (c=1,2 and cls=0)
-                        //        cls = c;
+		std::ifstream data(filepointer);
+		std::string line;
+		//throw away first title line
+		std::getline(data, line);
+		while(std::getline(data, line)){
+			std::stringstream linestream(line);
+			std::string cellContents;
+            PENTRY entry = new ENTRY;
+			int cnt = 0;
+			float *fdata = new float[vector_dim];
+			while(std::getline(linestream, cellContents, ',')){
+				if(cnt == vector_dim){
+					entry->val = (float)atof(cellContents.c_str());
+				} else {
+					fdata[cnt] = (float)atof(cellContents.c_str());
+				}
+				cnt++;
 
+			}
+            entry->vec = fdata;
+            entry->size = vector_dim;
+            record->entries.push_back(entry);
+		}
 
-                        CSignal *sig = new CSignal(ustr);
-
-                        if (sig->N && sig->M) {   //read file FORMAT 1.*
-                                if (!vector_dim)
-                                        vector_dim = sig->M;
-                                else {
-                                        if (vector_dim != sig->M) {
-                                                wprintf(L"fmt1.*: vector %s (lenght %d) is not equal to vlen: %d", ustr, sig->M, vector_dim);
-                                                exit(1);
-                                        }
-                                }
-
-                                for (int j = 0; j < sig->N; j++) {
-                                        if (normalization_val == 4)
-                                                sig->nenergy(sig->data[j], vector_dim);
-                                        if (normalization_val == 5)
-                                                sig->nminmax(sig->data[j], vector_dim, 0.1f, 0.9f);
-
-                                        PENTRY entry = new ENTRY;
-                                        entry->vec = sig->data[j];
-                                        entry->size = vector_dim;
-                                        swprintf(entry->filename, L"%s_%d", ustr, j);
-                                        //entry->clas = clas;
-                                        record->entries.push_back(entry);
-                                }
-
-                                signals.push_back(sig);
-                        }
-
-                        else {  //FORMAT 2
-                                //[filename] [class]
-                                //samples
-                                float tmp;
-                                vector<float> fvec;
-
-                                while (fwscanf(filepointer, L"%f", &tmp) == 1)
-                                        fvec.push_back(tmp);
-
-                                if (fvec.size() == 0) {
-                                        wprintf(L"fmt2: vector %s has zero lenght", ustr);
-                                        exit(1);
-                                }
-
-                                if (!vector_dim)
-                                        vector_dim = (int)fvec.size();
-                                else {
-                                        if (vector_dim != (int)fvec.size()) {
-                                                wprintf(L"fmt2: vector %s (lenght %d) is not equal to vector_length: %d", ustr, fvec.size(), vector_dim);
-                                                exit(1);
-                                        }
-                                }
-
-                                pstr = new wchar_t[_MAX_PATH];
-                                wcscpy(pstr, ustr);
-
-                                //if (normalization_val == 4)
-                                //        sig->nenergy(&fvec[0], vector_dim);
-                                //if (normalization_val == 5)
-                                //        sig->nminmax(&fvec[0], vector_dim, 0.1f, 0.9f);
-
-                                float *fdata = new float[vector_dim];
-                                for (int i = 0; i < vector_dim; i++)
-                                        fdata[i] = fvec[i];
-
-                                PENTRY entry = new ENTRY;
-                                entry->vec = fdata;
-                                entry->size = vector_dim;
-                                wcscpy(entry->filename, pstr);
-                                //entry->clas = clas;
-                                record->entries.push_back(entry);
-
-
-                                delete sig;
-                        }
-
-                }// if(res > 0) line was read from file
-        }// while(res > 0)  res = read_line(fp,ustr, &cls);
+        //int entrsize = (int)record->entries.size();   //size from previous read iteration
         fclose(filepointer);
-
-
-        //arrange indices of classes
-        if ((int)record->entries.size() > entrsize) {
-                //find new classes in entries not in rec->clsnum array
-                //for (int i = entrsize; i < (int)rec->entries.size(); i++) {
-                        //int clas = rec->entries[i]->clas;
-                //        bool match = false;
-                //        for (int j = 0; j < (int)rec->clasnum.size(); j++) {
-                //                if (clas == rec->clasnum[j]) {
-                //                        match = true;
-                //                        break;
-                //                }
-                //        }
-                //        if (!match) //no match
-                //                rec->clsnum.push_back(cls);
-                //}
-                //clsnum = [cls 1][cls 2] ... [cls N]   N entries
-                //clsnum = [1][2][3] or [3][1][2] or ... may be not sorted
-
-
-                /*if (rec->clsnum.size() > rec->indices.size()) {
-                        vector<int> indices;
-                        int s = (int)(rec->clsnum.size() - rec->indices.size());
-                        for (int i = 0; i < s; i++)
-                                rec->indices.push_back(indices);
-                }*/
-                //arrange indices
-                //for (int i = 0; i < (int)rec->clsnum.size(); i++) {
-                        //fill positions of clsnum[i] class to indices vector
-                        for (int j = entrsize; j < (int)record->entries.size(); j++) {
-                                //if (rec->clsnum[i] == rec->entries[j]->cls)
-                                        record->indices[0].push_back(j);
-                        }
-                //}
-        }
 }
 
 //////////////////data loading routines//////////////////
@@ -976,7 +807,7 @@ void set_normalization(RECORD *record, BPNeuralNetwork *network)
         ///////write normalization coeffs to input layer///////
         for (int n = 0; n < network->get_layer(0)->get_neuron_count(); n++) {
                 network->get_layer(0)->get_neuron(n)->get_input_link(0)->set_add_val(-vmin[n]);
-                /*switch (normalization_val) {
+                switch (normalization_val) {
                 case MINMAX:
                         network->get_layer(0)->get_neuron(n)->set_function_type(BPNeuron::LINEAR);                        
                         if (fabs(float(vmax[n] - vmin[n])) != 0.0f)
@@ -990,12 +821,12 @@ void set_normalization(RECORD *record, BPNeuralNetwork *network)
                                 network->get_layer(0)->get_neuron(n)->get_input_link(0)->set_weight(1.0f / vdisp[n]);                                
                         break;
 
-                case SIGMOIDAL: */ //sigmoidal
+                case SIGMOIDAL:  //sigmoidal
                         network->get_layer(0)->get_neuron(n)->set_function_type(BPNeuron::SIGMOID);                                                
                         if (vdisp[n] != 0.0f)
                                 network->get_layer(0)->get_neuron(n)->get_input_link(0)->set_weight(1.0f / vdisp[n]);                                
-                        //break;
-                //}
+                        break;
+                }
         }
 
 }

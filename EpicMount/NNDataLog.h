@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#DEFINE SENSOR_COUNT 19
+#define SENSOR_COUNT 19
 
 /*Context: "add some kind of a print statement to the files 
 to dump the sensor inputs (~18 track sensors + wheel speed 

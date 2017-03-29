@@ -5,8 +5,8 @@ CPP  = g++.exe
 CC   = gcc.exe
 WINDRES = windres.exe
 RES  = 
-OBJ  = CarState.o client.o EpicMount.o SimpleParser.o WrapperBaseDriver.o CarControl.o $(RES)
-LINKOBJ  = CarState.o client.o EpicMount.o SimpleParser.o WrapperBaseDriver.o CarControl.o $(RES)
+OBJ  = CarState.o client.o SimpleDriver.o NNDataLog.o SimpleParser.o WrapperBaseDriver.o CarControl.o $(RES)
+LINKOBJ  = CarState.o client.o SimpleDriver.o NNDataLog.o SimpleParser.o WrapperBaseDriver.o CarControl.o $(RES)
 LIBS =  -L WS2_32.Lib -lwsock32
 INCS =  -I"C:/cygwin64/lib/gcc/x86_64-pc-cygwin/5.4.0" -I"C:/cygwin64/lib/gcc/x86_64-pc-cygwin/5.4.0" 
 CXXINCS =  -I"C:/cygwin64/lib/gcc/x86_64-pc-cygwin/5.4.0/include" -I"C:/cygwin64/lib/gcc/x86_64-pc-cygwin/5.4.0/include/c++/backward" -I"C:/cygwin64/lib/gcc/x86_64-pc-cygwin/5.4.0" 
@@ -31,9 +31,12 @@ CarState.o: CarState.cpp
 
 client.o: client.cpp
 	$(CPP) -c client.cpp -o client.o $(CXXFLAGS)
+	
+NNDataLog.o: NNDataLog.cpp
+	$(CPP) -c NNDataLog.cpp -o NNDataLog.o $(CXXFLAGS)
 
-EpicMount.o: EpicMount.cpp
-	$(CPP) -c EpicMount.cpp -o EpicMount.o $(CXXFLAGS)
+SimpleDriver.o: SimpleDriver.cpp
+	$(CPP) -c SimpleDriver.cpp -o SimpleDriver.o $(CXXFLAGS)
 
 SimpleParser.o: SimpleParser.cpp
 	$(CPP) -c SimpleParser.cpp -o SimpleParser.o $(CXXFLAGS)

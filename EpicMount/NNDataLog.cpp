@@ -32,7 +32,7 @@ clutch/gear) to a file for a whole race on one constant track*/
 
 // probably very bad for performance
 void NNDataLogger::AppendDataRecord(DataLogEntry dataRow) {
-	printf("t: %4.2f, centerSensor: %s, angle: %5.2f, offset: %5.2f, speed: %5.2f, accBrake: %4.2f, steer: %3.2f, RPM: %4.2f, gear: %2.1f \r\n",
+	printf("t: %4.2f, centerSensor: %5.2f, angle: %5.2f, offset: %5.2f, speed: %5.2f, accBrake: %4.2f, steer: %3.2f, RPM: %4.2f, gear: %2.1f \r\n",
 		dataRow.time,
 		dataRow.carTrackSensors[9],
 		//dataRow.carTargetAngle,
@@ -54,16 +54,13 @@ void NNDataLogger::AppendDataRecord(DataLogEntry dataRow) {
 		file << dataRow.carTrackSensors[i] << ',';
 	}
 	file << dataRow.carAngleToTrack << ',';
-	file << dataRow.carTrackLeftDist << ',';
-	file << dataRow.carTrackRightDist << ',';
+	file << dataRow.carTrackOffset << ',';
 	//file << dataRow.carTargetAngle << ',';
-	file << dataRow.carSpeed << ',';
+	file << dataRow.carXSpeed << ',';
 	file << dataRow.carBrakeAccel << ',';
 	file << dataRow.carSteer << ',';
 	file << dataRow.carRpm << ',';
-	file << dataRow.carGear;
+	file << dataRow.carGear << endl;
 
-
-	file << endl;
 	file.close();
 }

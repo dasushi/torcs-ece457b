@@ -511,21 +511,21 @@ CarControl EpicMount::wDrive(CarState cs)
         // build a CarControl variable and return it
         CarControl cc(accel,brake,gear,steer);
 		DataLogEntry logEntry;
-		logEntry.time = cs->curLapTime;
+		logEntry.time = cs.getCurLapTime();
 		for(int i = 0; i < 19; i++){
-			logEntry.carTrackSensors[i] = cs->track[i] / 200.0f;
+			logEntry.carTrackSensors[i] = cs.getTrack(i) / 200.0f;
 		}
-		logEntry.carSpeed = cs->speedX / 252; // max observed speed is 252
+		logEntry.carXSpeed = cs.getSpeedX() / 150; // max observed speed is 252
 		//fuse the brake [0,0.5] and accel [0.5,1] signal from [0,1] brake and [0,1] accel
-		logEntry.carBrakeAccel = brake == 0 ? (accel + 1) / 2 : brake / 2; 
+		logEntry.carBrakeAccel = brake == 0 ? (accel + 1) / 2 : (-brake + 1) / 2; 
 		// logEntry.carClutch = car->ctrl.clutchCmd; // always zero
-		logEntry.carRpm = cs->rpm / 8200;
-		logEntry.carGear = car->gear / 8.0; // 10 - neutral - reverse
-		logEntry.carSteer = car->(steer + 1) / 2; //from -1, 1 to [0,2] to [0,1]
-		logEntry.carAngleToTrack = cs->angle / maxAngleRad;
+		logEntry.carRpm = cs.getRpm() / 8200;
+		logEntry.carGear = gear / 8.0; // 10 - neutral - reverse
+		logEntry.carSteer = (steer + 1) / 2; //from -1, 1 to [0,2] to [0,1]
+		logEntry.carAngleToTrack = ((cs.getAngle()/ PI) + 1) / 2; //from [-pi,pi] to [-1,1] to [0,2] to [0,1]
 		
 		//normally roughly from [-1, 1]
-		logEntry.carTrackOffset = cs->trackPos;
+		logEntry.carTrackOffset = cs.getTrackPos();
 	
 		//logEntry.carTargetAngle = targetAngle / maxAngleRad; // already calculated
 		

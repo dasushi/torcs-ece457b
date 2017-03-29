@@ -11,6 +11,9 @@
 #include <conio.h>
 
 #include <vector>
+#include <string>
+#include <fstream>
+#include <sstream>
 #include <algorithm>
 
 using namespace std;
@@ -32,7 +35,7 @@ typedef struct _entry {
 
 typedef struct _record {
 	vector<PENTRY> entries;
-	vector< vector<int> > indices;
+	//vector< vector<int> > indices;
 	//vector<float> clasnum;
 } RECORD, *PRECORD;
 

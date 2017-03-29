@@ -38,17 +38,19 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 		//scan layer count
 		if((response = fwscanf(filepointer, L"%d", &m_layer_count)) != 1){
 			fclose(filepointer);
+			wprintf(L"Failed loading network during layer count\n");
 			m_flag = -1; //loading failed
 			return;
 		}
 		for(int i = 0; i < m_layer_count; i++){
-			//scan nval
+			//scan layer types
 			if((response = fwscanf(filepointer, L"%d", &nval)) != 1){
 				fclose(filepointer);
+				wprintf(L"Failed loading network during layer types\n");
 				m_flag = -1; //loading failed
 				return;
 			} else {
-				//push input layers
+				//push input layer with same type
 				layers.push_back(new BPNeuralLayer(nval));
 			}
 		}
@@ -83,10 +85,12 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 				for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
 					if((response = fwscanf(filepointer, L"%f", &w)) != 1){
 						m_flag = 1; //flag = 1 for randomized weights
+						//wprintf(L"Randomizing weights\n");
 						randomize_weights((unsigned int) time(0));
 						return; //init random values since loading failed
 					} else {
 						//set properly loaded value
+						//wprintf(L"Loaded weight\n");
 						layers[i]->neurons[j]->inputs[k]->w = w;
 					}
 				}
@@ -289,16 +293,19 @@ bool BPNeuralNetwork::save(const wchar_t *filename) const {
 	FILE *filepointer = _wfopen(filename, L"wt");
 
 	if(filepointer){
+		//layer count
 		fwprintf(filepointer, L"%d\n", m_layer_count);
-
+		//each layer count
 		for(int i = 0; i < get_layer_count(); i++){
 			fwprintf(filepointer, L"%d ", layers[i]->get_neuron_count());
 		}
 
 		fwprintf(filepointer, L"\n\n");
+		//input and hidden layer type
 		fwprintf(filepointer, L"%d\n%d\n\n", layers[0]->neurons[0]->function_type, layers[1]->neurons[0]->function_type);
 
 		for(int i = 0; i < get_layer_count(); i++){
+			//print weights & bias
 			fwprintf(filepointer, L"%f ", layers[0]->neurons[i]->inputs[0]->in_add);
 			fwprintf(filepointer, L"%f\n", layers[0]->neurons[i]->inputs[0]->w);
 		}
@@ -308,6 +315,7 @@ bool BPNeuralNetwork::save(const wchar_t *filename) const {
 		for(int i = 1; i < get_layer_count(); i++){
 			for(int j = 0; j < layers[i]->get_neuron_count(); j++){
 				for(int k = 0; k < layers[i]->neurons[j]->get_input_link_count(); k++){
+					//print weights
 					fwprintf(filepointer, L"%f\n", layers[i]->neurons[j]->inputs[k]->w);
 				}
 			}

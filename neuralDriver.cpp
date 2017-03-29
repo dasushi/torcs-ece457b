@@ -150,11 +150,11 @@ NeuralDriver::getAccel(CarState &cs)
 			float current_angle = ((cs.getAngle() / PI) + 1.0f) / 2; //normalize from [-pi, +pi] to [-1,1] to [0,2] to [0,1] 
 			float current_offset = (cs.getTrackPos() + 1.0f) / 2; //[-1,1] (when network is in control) to [0,2] to [0,1]
 			float x_speed = cs.getSpeedX() / maxSpeed; //x speed normalized
-			rSpeed = rxSensor / 200.0f;
-			cSpeed = cSensor / 200.0f;
-			sSpeed = sxSensor / 200.0f;
+			float rSpeed = rxSensor / 200.0f;
+			float cSpeed = cSensor / 200.0f;
+			float sSpeed = sxSensor / 200.0f;
 			
-			float *input_vector = {current_angle, current_offset, x_speed, rSpeed, cSpeed, sSpeed};
+			float *input_vector = {sSpeed, cSpeed, rSpeed, current_angle, current_offset, x_speed};
 			float *output_vector = {0.0f};
 			accBrakeNetwork->predict(input_vector, output_vector); //returns accel/brake angle from [0,1]
 			float accelBrakeVal = output_vector[0]; //[0, 1] -> [0,0.5] brakes [0.5,1.0] accel
@@ -202,7 +202,7 @@ NeuralDriver::wDrive(CarState cs)
         clutching(cs,clutch);
 
         // build a CarControl variable and return it
-        CarControl cc (1.0,0.0,gear,steer,clutch);
+        CarControl cc (0.75,0.0,gear,steer,clutch);
         return cc;
     }
 
