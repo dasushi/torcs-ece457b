@@ -231,18 +231,6 @@
 			>
 		</Filter>
 		<Filter
-			Name="Lib"
-			>
-			<File
-				RelativePath=".\Lib\signal.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\Lib\signal.h"
-				>
-			</File>
-		</Filter>
-		<Filter
 			Name="LibNN"
 			>
 			<File

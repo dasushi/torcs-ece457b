@@ -17,7 +17,7 @@ public:
 private:
 	int m_neuron_count;
 	wchar_t layer_name[260]; //_MAX_PATH = 260
-	vector<BPNeuron *> neurons;
+	std::vector<BPNeuron *> neurons;
 
 };
 
@@ -58,7 +58,7 @@ private:
 	int m_flag;
 	int m_layer_count;
 
-	vector<BPNeuralLayer *> layers;
+	std::vector<BPNeuralLayer *> layers;
 	float m_nval;
 	float m_alpha;
 

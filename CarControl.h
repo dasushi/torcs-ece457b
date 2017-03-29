@@ -16,10 +16,6 @@
 #ifndef CARCONTROL_H_
 #define CARCONTROL_H_
 
-#include <iostream>
-#include <sstream>
-#include <cstring>
-#include <cassert>
 #include "SimpleParser.h"
 
 using namespace std;

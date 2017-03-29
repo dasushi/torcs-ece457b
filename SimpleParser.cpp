@@ -13,6 +13,8 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
+#include "stdafx.h"
 #include "SimpleParser.h"
 
 bool
@@ -25,12 +27,12 @@ SimpleParser::parse(string sensors, string tag, float &value)
 		close = sensors.find_first_of(')',open);
 		if (close != string::npos)
 		{
-			istringstream IN(sensors.substr(open+1,close-open-1));
+			istringstream buffer(sensors.substr(open+1,close-open-1));
 			string currTag;
-			IN >> currTag;
+			buffer >> currTag;
 			if (currTag.compare(tag)==0)
 			{
-				IN >> value;
+				buffer >> value;
 				return true;
 			}
 			open = sensors.find_first_of('(',close+1);
@@ -52,12 +54,12 @@ SimpleParser::parse(string sensors, string tag, int &value)
 		close = sensors.find_first_of(')',open);
 		if (close != string::npos)
 		{
-			istringstream IN(sensors.substr(open+1,close-open-1));
+			istringstream buffer(sensors.substr(open+1,close-open-1));
 			string currTag;
-			IN >> currTag;
+			buffer >> currTag;
 			if (currTag.compare(tag)==0)
 			{
-				IN >> value;
+				buffer >> value;
 				return true;
 			}
 			open = sensors.find_first_of('(',close+1);
@@ -78,14 +80,14 @@ SimpleParser::parse(string sensors, string tag, float *value, int size)
 		close = sensors.find_first_of(')',open);
 		if (close != string::npos)
 		{
-			istringstream IN(sensors.substr(open+1,close-open-1));
+			istringstream buffer(sensors.substr(open+1,close-open-1));
 			string currTag;
-			IN >> currTag;
+			buffer >> currTag;
 			if (currTag.compare(tag)==0)
 			{				
 				for (int i = 0; i < size; ++i) 
 				{
-					if (! (IN >> value[i]) )
+					if (! (buffer >> value[i]) )
 						return false;
 				}
 				return true;

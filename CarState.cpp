@@ -13,6 +13,8 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
+#include "stdafx.h"
 #include "CarState.h"
 
 

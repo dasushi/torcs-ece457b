@@ -13,6 +13,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
 #ifndef NeuralDriver_H_
 #define NeuralDriver_H_
 
@@ -23,7 +24,8 @@
 #include "CarControl.h"
 #include "SimpleParser.h"
 #include "WrapperBaseDriver.h"
-#include "bpnn/src/LibNN/BPNeuralNetwork.h"
+#include "BPNeuralNetwork.h"
+#include "BPNeuron.h"
 
 #define PI 3.14159265
 

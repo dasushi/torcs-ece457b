@@ -13,13 +13,14 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+#include "stdafx.h"
 #include "NeuralDriver.h"
 
 
 /* Gear Changing Constants*/
 const int NeuralDriver::gearUp[6]=
     {
-        8500,8250,8000,8000,8000,0
+        9000,9000,9000,9000,9000,0
     };
 const int NeuralDriver::gearDown[6]=
     {
@@ -112,13 +113,20 @@ NeuralDriver::getSteer(CarState &cs)
 		//}
 		//float rxOffset = (cSensor - rxSensor) / maxRxOffset;
 		//float sxOffset = (cSensor - sxSensor) / maxSxOffset;
-		rSpeed = rxSensor / 200.0f;
-		cSpeed = cSensor / 200.0f;
-		sSpeed = sxSensor / 200.0f;
+		float rSpeed = rxSensor / 200.0f;
+		float cSpeed = cSensor / 200.0f;
+		float sSpeed = sxSensor / 200.0f;
 		
-		float input_vector[6] = {current_angle, current_offset, x_speed, rSpeed, cSpeed, sSpeed};
-		float output_vector[1] = {0.0f};
-		steerNetwork->predict(input_vector, output_vector); //returns steering angle from [0,1]
+		float *input_vector = new float[6];
+		float *output_vector = new float[1];
+		input_vector[0] = sSpeed;
+		input_vector[1] = cSpeed;
+		input_vector[2] = rSpeed;
+		input_vector[3] = current_angle;
+		input_vector[4] = current_offset;
+		input_vector[5] = x_speed;
+		output_vector[0] = 0.0f;
+		steerNetwork->classify(input_vector, output_vector); //returns steering angle from [0,1]
 		float steeringVal = (output_vector[0] - 0.5f) * 2; //from [0,1] to [-0.5, 0.5] to [-1, 1]
 		return steeringVal;
 	}
@@ -154,9 +162,16 @@ NeuralDriver::getAccel(CarState &cs)
 			float cSpeed = cSensor / 200.0f;
 			float sSpeed = sxSensor / 200.0f;
 			
-			float *input_vector = {sSpeed, cSpeed, rSpeed, current_angle, current_offset, x_speed};
-			float *output_vector = {0.0f};
-			accBrakeNetwork->predict(input_vector, output_vector); //returns accel/brake angle from [0,1]
+			float *input_vector = new float[6];
+			float *output_vector = new float[1];
+			input_vector[0] = sSpeed;
+			input_vector[1] = cSpeed;
+			input_vector[2] = rSpeed;
+			input_vector[3] = current_angle;
+			input_vector[4] = current_offset;
+			input_vector[5] = x_speed;
+			output_vector[0] = 0.0f;
+			accBrakeNetwork->classify(input_vector, output_vector); //returns accel/brake angle from [0,1]
 			float accelBrakeVal = output_vector[0]; //[0, 1] -> [0,0.5] brakes [0.5,1.0] accel
 			return accelBrakeVal;
         }

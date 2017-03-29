@@ -13,6 +13,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+ 
 #ifndef CARSTATE_H_
 #define CARSTATE_H_
 
@@ -20,10 +21,6 @@
 #define TRACK_SENSORS_NUM 19
 #define OPPONENTS_SENSORS_NUM 36
 
-#include <iostream>
-#include <sstream>
-#include <cstring>
-#include <cassert>
 #include "SimpleParser.h"
 
 using namespace std;

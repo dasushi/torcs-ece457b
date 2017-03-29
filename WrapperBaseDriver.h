@@ -19,8 +19,6 @@
 #include "CarState.h"
 #include "CarControl.h"
 #include "BaseDriver.h"
-#include <cmath>
-#include <cstdlib>
 
 class WrapperBaseDriver : public BaseDriver
 {

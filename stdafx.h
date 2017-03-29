@@ -1,17 +1,23 @@
-#pragma once
-#pragma warning(disable : 4996)
+//#pragma once
+//#pragma warning(disable : 4996)
 
+#include <WinSock.h>
 #include <iostream>
 #include <tchar.h>
 #include <math.h>
 #include <windows.h>
-#include <stdio.h>
-#include <time.h>
+//#include <time.h>
 #include <wchar.h>
 //#include <conio.h>
+#include <stdio.h>
 
+#include <cmath>
+#include <cstdlib>
+#include <cstdio>
+#include <cassert>
 #include <vector>
 #include <string>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -30,7 +36,7 @@ typedef struct _entry {
 	float *vec;
 	float val;
 	int size;
-	wchar_t filename[_MAX_PATH];
+	wchar_t filename[260]; //_MAX_PATH = 260
 } ENTRY, *PENTRY;
 
 typedef struct _record {

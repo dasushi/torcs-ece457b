@@ -14,19 +14,19 @@
  *                                                                         *
  ***************************************************************************/
 /* Uncomment the following lines under windows */
+#include "stdafx.h"
 #define WIN32 // maybe not necessary because already define
 #define __DRIVER_CLASS__ NeuralDriver     // put here the name of your driver class
 #define __DRIVER_INCLUDE__ "NeuralDriver.h" // put here the filename of your driver h\\eader
 
 #ifdef WIN32
-#include <WinSock.h>
+//#include <WinSock.h>
 #else
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #endif
 
-#include <iostream>
 #include <cstdlib>
 #include <cstdio>
 #include __DRIVER_INCLUDE__

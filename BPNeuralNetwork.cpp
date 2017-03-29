@@ -2,6 +2,10 @@
 #include "BPNeuralNetwork.h"
 #include "BPNeuron.h"
 
+#include <wchar.h>
+#include <stdio.h>
+
+
 BPNeuralLayer::BPNeuralLayer(int neurons_count): m_neuron_count(neurons_count)
 {
 	for (int i = 0; i < m_neuron_count; i++){
@@ -31,14 +35,17 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 	int in_func = 0;
 	int h_func = 0;
 	float w = 0.0f;
-	FILE *filepointer = _wfopen(filename, L"rt");
+	size_t charSize = sizeof(char) * wcslen(filename);
+	char *charName = (char *) malloc(charSize);
+	wcstombs(charName, filename, charSize);
+	FILE *filepointer = fopen(charName, "rt");
 	
 	//if file loaded successfully
 	if (filepointer) {
 		//scan layer count
 		if((response = fwscanf(filepointer, L"%d", &m_layer_count)) != 1){
 			fclose(filepointer);
-			wprintf(L"Failed loading network during layer count\n");
+			//wprintf(L"Failed loading network during layer count\n");
 			m_flag = -1; //loading failed
 			return;
 		}
@@ -46,7 +53,7 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 			//scan layer types
 			if((response = fwscanf(filepointer, L"%d", &nval)) != 1){
 				fclose(filepointer);
-				wprintf(L"Failed loading network during layer types\n");
+				//wprintf(L"Failed loading network during layer types\n");
 				m_flag = -1; //loading failed
 				return;
 			} else {
@@ -62,7 +69,7 @@ BPNeuralNetwork::BPNeuralNetwork(const wchar_t *filename): m_flag(-1), m_nval(0.
 			h_func = 1;
 		} 
 
-		vector<float> add_layers, mult_layers;
+		std::vector<float> add_layers, mult_layers;
 		for(int i = 0; i < layers[0]->get_neuron_count(); i++){
 			float add, mult;
 			//scan add and multiplier values
@@ -143,7 +150,7 @@ void BPNeuralNetwork::init_links(const float *add_vec,
 	int i = 0;
 
 	layer = layers[i++];
-	swprintf(layer->layer_name, L"input layer");
+	//swprintf(layer->layer_name, L"input layer");
 
 	//iterate over input layers neurons and set in, add, mul functions
 	for(int j = 0; j < layer->get_neuron_count(); j++){
@@ -169,7 +176,7 @@ void BPNeuralNetwork::init_links(const float *add_vec,
 		prev_layer = layer;
 		layer = layers[i++];
 
-		swprintf(layer->layer_name, L"hidden layer %d", j + 1);
+		//swprintf(layer->layer_name, L"hidden layer %d", j + 1);
 
 		for(int k = 0; k < layer->get_neuron_count(); k++){
 			//set hidden function and add default bias
@@ -185,7 +192,7 @@ void BPNeuralNetwork::init_links(const float *add_vec,
 
 	prev_layer = layer;
 	layer = layers[i++];
-	swprintf(layer->layer_name, L"output layer");
+	//swprintf(layer->layer_name, L"output layer");
 
 	for(int j = 0; j < layer->get_neuron_count(); j++){
 		neuronPtr = layer->neurons[j];
@@ -290,7 +297,11 @@ void BPNeuralNetwork::network_output(float *out_vec) const {
 }
 
 bool BPNeuralNetwork::save(const wchar_t *filename) const {
-	FILE *filepointer = _wfopen(filename, L"wt");
+	
+	size_t charSize = sizeof(char) * wcslen(filename);
+	char *charName = (char *) malloc(charSize);
+	wcstombs(charName, filename, charSize);
+	FILE *filepointer = fopen(charName, "wt");
 
 	if(filepointer){
 		//layer count

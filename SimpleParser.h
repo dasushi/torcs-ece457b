@@ -16,10 +16,6 @@
 #ifndef SIMPLEPARSER_H_
 #define SIMPLEPARSER_H_
 
-#include <iostream>
-#include <sstream>
-#include <cstring>
-
 using namespace std;
 
 
