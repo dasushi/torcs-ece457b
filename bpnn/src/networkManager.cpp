@@ -45,7 +45,7 @@ int _tmain(int argc, wchar_t* argv[]){
 	if (argc == 1) {
 		
 		wprintf(L" Usage:\n");
-		wprintf(L"  ann1dn.exe t net.nn cls1 cls2 3000 [tst.txt][val.txt][TH [0.5]][val type [mse]] [norm [0]] [err [0.05]] \n");
+		wprintf(L"  ann1dn.exe t net.nn datafile 3000 [tst.txt][val.txt][TH [0.5]][val type [mse]] [norm [0]] [err [0.05]] \n");
 		wprintf(L"  ann1dn.exe r net.nn testcls [TH [0.5]] [norm [0]]\n\n");
 		wprintf(L"\n argv[1] t - train\n");
 		wprintf(L" [2] network conf file\n");
@@ -66,7 +66,7 @@ int _tmain(int argc, wchar_t* argv[]){
 		//wprintf(L" [5] opt [norm]: [0-no], 1-minmax, 2-zscore, 3-softmax, 4-energy\n\n");
 
 
-		wprintf(L" metrics: [0 - mse, optional]\n");
+		/*wprintf(L" metrics: [0 - mse, optional]\n");
 		wprintf(L"           1 - AC\n");
 		wprintf(L"           2 - sqrt(SE*SP)\n");
 		wprintf(L"           3 - sqrt(SE*PP)\n");
@@ -74,7 +74,7 @@ int _tmain(int argc, wchar_t* argv[]){
 		wprintf(L"           5 - sqrt(SE*SP*PP*NP*AC)\n");
 		wprintf(L"           6 - F-measure b=1\n");
 		wprintf(L"           7 - F-measure b=1.5\n");
-		wprintf(L"           8 - F-measure b=3\n");
+		wprintf(L"           8 - F-measure b=3\n");*/
 	} else if ( !wcscmp(argv[1], L"t") )
 		//train flag supplied
 	        train(argc, argv);
@@ -101,10 +101,10 @@ void train(int argc, wchar_t *argv[]){
 	bool test = false;
 
 	//using optional arguments
-	if(argc >= 7){
-		if(wcslen(argv[6]) > 1){
+	if(argc >= 6){
+		if(wcslen(argv[5]) > 1){
 			//load validation set from argument
-			FILE *validation_set = _wfopen(argv[6], L"rt");
+			FILE *validation_set = _wfopen(argv[5], L"rt");
 			if(validation_set){
 				read_class(validation_set, &validateRecord);
 				if(validateRecord.entries.size() > 0){
@@ -115,21 +115,21 @@ void train(int argc, wchar_t *argv[]){
 				}
 			} else {
 				//unable to load file
-				wprintf(L"Error opening validation set %s\n", argv[6]);
+				wprintf(L"Error opening validation set %s\n", argv[5]);
 				exit(1);
 			}
 
-			TH = float(_wtof(argv[8]));
-			validation_type = _wtoi(argv[9]);
+			TH = float(_wtof(argv[7]));
+			validation_type = _wtoi(argv[8]);
 
-			if(argc >= 11){
+			if(argc >= 10){
 				//load error + normalization
-				error = float(_wtof(argv[10]));
+				error = float(_wtof(argv[9]));
 				//normalization_val = _wtoi(argv[10]);
 			//} else if(argc >= 11){
 				//normalization_val = _wtoi(argv[10]);
 			}
-			FILE *testSetFile = _wfopen(argv[7], L"rt");
+			FILE *testSetFile = _wfopen(argv[6], L"rt");
 			if(testSetFile){
 				read_class(testSetFile, &testRecord);
 				if(!(testRecord.entries.size())){
@@ -142,25 +142,25 @@ void train(int argc, wchar_t *argv[]){
 				wprintf(L"Failed to open test record file %s \n", argv[7]);
 				exit(1);
 			}
-		} else if (argc >= 8){
+		} else if (argc >= 6){
 			//normalization_val = _wtoi(argv[6]);
-			error = float(_wtof(argv[6]));
+			error = float(_wtof(argv[5]));
 		//} else {
 			//normalization_val = _wtoi(argv[6]);
 		}
 	}
 
 	wprintf(L"Loading CLS data\n");
-	FILE *clsData1;
+	FILE *inputData;
 	//FILE *clsData2;
 
-	clsData1 = _wfopen(argv[3], L"rt");
+	inputData = _wfopen(argv[3], L"rt");
 	//clsData2 = _wfopen(argv[4], L"rt");
 
-	if(!(clsData1)){// && clsData2)){
+	if(!(inputData)){// && clsData2)){
 		wprintf(L"Loading CLS files failed: %s\n", argv[3]);// 2: %s\n", argv[3], argv[4]);
 	} else {
-		read_class(clsData1, &trainRecord, 1);
+		read_class(inputData, &trainRecord, 1);
 		//read_class(clsData2, &trainRecord, 2);
 	}
 
@@ -173,8 +173,7 @@ void train(int argc, wchar_t *argv[]){
 		exit(1);*/
 	} 
 
-	wprintf(L"Train Class: %d file loaded. Count: %d samples\n",
-		trainRecord.indices[0].size(), 
+	wprintf(L"Train Class file loaded. Count: %d samples\n",
 		trainRecord.entries[0]->size);
 
 	//set test-train ratio depending on validation & test data
@@ -280,7 +279,7 @@ void train(int argc, wchar_t *argv[]){
 		if (!(epoch % step)){
 			float mul_out1 = out_vec1[0];
 			out_vec1[0] = 0.0f;
-			mul_out1 = mul_out1 / (float(step) / 2.0f);
+			//mul_out1 = mul_out1 / (float(step) / 2.0f);
 
 			//float mul_out2 = out_vec2[0];
 			//out_vec2[0] = 0.0f;
@@ -297,7 +296,7 @@ void train(int argc, wchar_t *argv[]){
 			//}
 
 			if(validateRecord.entries.size()){
-				if(mul_out1 > TH){// && mul_out2 < TH){
+				//if(mul_out1 > TH){// && mul_out2 < TH){
 					validate(&validateRecord, TH, &tmp_accuracy, &tempaccuracy); 
 					if(tmp_accuracy >= accuracy){
 						accuracy = tmp_accuracy;
@@ -311,9 +310,9 @@ void train(int argc, wchar_t *argv[]){
 					wprintf(L"Max accuracy: %.2f (epoch %d) mse: %.2f\n", 
 						accuracy, max_epoch, paccuracy.mse);//, paccuracy.sqe,
 						//paccuracy.spec, paccuracy.acc);
-				} else {
-					wprintf(L"\n");
-				}
+				//} else {
+				//	wprintf(L"\n");
+				//}
 			} else {
 				wprintf(L"\n");
 			}

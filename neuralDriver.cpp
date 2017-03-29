@@ -68,13 +68,11 @@ NeuralDriver::getGear(CarState &cs)
     // if gear is 0 (N) or -1 (R) just return 1 
     if (gear<1)
         return 1;
-    // check if the RPM value of car is greater than the one suggested 
-    // to shift up the gear from the current one     
+    // check if we are at a high enough RPM to shift  
     if (gear <6 && rpm >= gearUp[gear-1])
         return gear + 1;
     else
-    	// check if the RPM value of car is lower than the one suggested 
-    	// to shift down the gear from the current one
+    	// check if we are 
         if (gear > 1 && rpm <= gearDown[gear-1])
             return gear - 1;
         else // otherwhise keep current gear
@@ -106,17 +104,23 @@ NeuralDriver::getSteer(CarState &cs)
 		float current_angle = ((cs.getAngle() / PI) + 1.0f) / 2; //normalize from [-pi, +pi] to [-1,1] to [0,2] to [0,1] 
 		float current_offset = (cs.getTrackPos() + 1.0f) / 2; //[-1,1] (when network is in control) to [0,2] to [0,1]
 		float x_speed = cs.getSpeedX() / maxSpeed; //x speed normalized
-		if((cSensor - rxSensor) > maxRxOffset){
-				maxRxOffset = cSensor - rxSensor;
-		}
-		if((cSensor - sxSensor > maxSxOffset){
-				maxSxOffset = cSensor - sxSensor;
-		}
-		float rxOffset = (cSensor - rxSensor) / maxRxOffset;
-		float sxOffset = (cSensor - sxSensor) / maxSxOffset;
-		float *input_vector = new float[
+		//if((cSensor - rxSensor) > maxRxOffset){
+		//		maxRxOffset = cSensor - rxSensor;
+		//}
+		//if((cSensor - sxSensor > maxSxOffset){
+		//		maxSxOffset = cSensor - sxSensor;
+		//}
+		//float rxOffset = (cSensor - rxSensor) / maxRxOffset;
+		//float sxOffset = (cSensor - sxSensor) / maxSxOffset;
+		rSpeed = rxSensor / 200.0f;
+		cSpeed = cSensor / 200.0f;
+		sSpeed = sxSensor / 200.0f;
 		
-		
+		float input_vector[6] = {current_angle, current_offset, x_speed, rSpeed, cSpeed, sSpeed};
+		float output_vector[1] = {0.0f};
+		steerNetwork->predict(input_vector, output_vector); //returns steering angle from [0,1]
+		float steeringVal = (output_vector[0] - 0.5f) * 2; //from [0,1] to [-0.5, 0.5] to [-1, 1]
+		return steeringVal;
 	}
 }
 
@@ -142,7 +146,19 @@ NeuralDriver::getAccel(CarState &cs)
         else
         {
 			//track is not straight, get neural network steering prediction [0,1] -> [0,0.5] brakes [0.5,1.0] accel
-			return getAccBrakePrediction(cs);
+			
+			float current_angle = ((cs.getAngle() / PI) + 1.0f) / 2; //normalize from [-pi, +pi] to [-1,1] to [0,2] to [0,1] 
+			float current_offset = (cs.getTrackPos() + 1.0f) / 2; //[-1,1] (when network is in control) to [0,2] to [0,1]
+			float x_speed = cs.getSpeedX() / maxSpeed; //x speed normalized
+			rSpeed = rxSensor / 200.0f;
+			cSpeed = cSensor / 200.0f;
+			sSpeed = sxSensor / 200.0f;
+			
+			float *input_vector = {current_angle, current_offset, x_speed, rSpeed, cSpeed, sSpeed};
+			float *output_vector = {0.0f};
+			accBrakeNetwork->predict(input_vector, output_vector); //returns accel/brake angle from [0,1]
+			float accelBrakeVal = output_vector[0]; //[0, 1] -> [0,0.5] brakes [0.5,1.0] accel
+			return accelBrakeVal;
         }
     }
     else
