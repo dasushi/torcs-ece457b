@@ -315,7 +315,7 @@ bool BPNeuralNetwork::save(const wchar_t *filename) const {
 		//input and hidden layer type
 		fwprintf(filepointer, L"%d\n%d\n\n", layers[0]->neurons[0]->function_type, layers[1]->neurons[0]->function_type);
 
-		for(int i = 0; i < get_layer_count(); i++){
+		for(int i = 0; i < layers[0]->get_neuron_count(); i++){
 			//print weights & bias for input layer
 			fwprintf(filepointer, L"%f ", layers[0]->neurons[i]->inputs[0]->in_add);
 			fwprintf(filepointer, L"%f\n", layers[0]->neurons[i]->inputs[0]->w);

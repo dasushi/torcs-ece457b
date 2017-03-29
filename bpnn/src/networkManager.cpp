@@ -154,13 +154,12 @@ void train(int argc, wchar_t *argv[]){
 			}
 	}
 
-	if(normalization_val){
+	if(normalization_val != 0){
 		//energy normalization exception
-		if(normalization_val != 3){
-			wprintf(L"Starting normalization %s\n",
-				normalization_type[normalization_val - 1]);
+		//if(normalization_val != 3){
+			wprintf(L"Starting normalization %d\n",normalization_val);
 			set_normalization(&trainRecord, neuralNet);
-		}
+		//}
 	}
 
 	wprintf(L"Training network\n");
@@ -192,6 +191,8 @@ void train(int argc, wchar_t *argv[]){
 	//int currentTime = GetTickCount();
 
 	size = (int)trainRecord.entries.size();
+	wchar_t maxName[_MAX_PATH] = L"max";
+	wcscat(maxName, networkName); 
 
 	epoch_count = _wtoi(argv[4]);
 	int per_epoch = size / epoch_count;
@@ -217,7 +218,7 @@ void train(int argc, wchar_t *argv[]){
 					accuracy = tmp_accuracy;
 					max_epoch = epoch;
 					memcpy(&paccuracy, &tempaccuracy, sizeof(ACCURACY));
-					if(!neuralNet->save(L"maxaccuracy.nn")){
+					if(!neuralNet->save(maxName)){
 						wprintf(L"Failed to save maxaccuracy.nn results\n");
 					}
 				}
@@ -249,11 +250,9 @@ void train(int argc, wchar_t *argv[]){
 	if(!neuralNet->save(argv[2])){
 		wprintf(L"Failed to save network %s \n", argv[2]);
 	}
-	wchar_t maxName[_MAX_PATH] = L"max";
-	wcscat(maxName, networkName); 
 	wprintf(L"maxNetwork: %s\n", maxName);
 	BPNeuralNetwork* maxAccuracy = new BPNeuralNetwork(maxName);
-	if(maxAccuracy->flag() != -1){
+	if(maxAccuracy->flag() == 0){
 		wprintf(L"\n\nMaxAccuracy classification results:\n");
 		validate(&trainRecord, TH, &accuracy, &paccuracy);
 		wprintf(L"Training set: %d, mse: %.2f, acc: %.2f\n", 
@@ -276,10 +275,10 @@ void train(int argc, wchar_t *argv[]){
 			
 		}
 	} else {
-		wprintf(L"Failed loading MaxAccuracy network during classification\n");
+		wprintf(L"Failed loading %s max network during classification with flag %d\n", maxName, maxAccuracy->flag());
 	}
 	neuralNet = new BPNeuralNetwork(networkName);
-	if(neuralNet->flag() != -1){
+	if(neuralNet->flag() == 0){
 		wprintf(L"\n\nBPNetwork classification results:\n");
 		validate(&trainRecord, TH, &accuracy, &paccuracy);
 		wprintf(L"Training set: %d, mse: %.2f, acc: %.2f\n", 
@@ -303,7 +302,7 @@ void train(int argc, wchar_t *argv[]){
 			
 		}
 	} else {
-		wprintf(L"Failed loading network %s during classification\n", argv[2]);
+		wprintf(L"Failed loading network %s during classification with flag %d\n", argv[2], neuralNet->flag());
 	}
 }
 

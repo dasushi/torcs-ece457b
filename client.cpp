@@ -202,6 +202,7 @@ int main(int argc, char *argv[])
 		else
 		{
                 	cout << "Received: " << buf << endl;
+					d.initNetworks();
 
                 	if (strcmp(buf,"***identified***")==0)
                     		break;
@@ -278,7 +279,7 @@ int main(int argc, char *argv[])
             }
             else
             {
-                cout << "** Server did not respond in 1 second.\n";
+                //cout << "** Server did not respond in 1 second.\n";
             }
         }
     } while(shutdownClient==false && ( (++curEpisode) != maxEpisodes) );

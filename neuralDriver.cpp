@@ -47,6 +47,8 @@ const float NeuralDriver::wheelRadius[4]={0.3306,0.3306,0.3276,0.3276};
 const float NeuralDriver::absSlip=2.0;
 const float NeuralDriver::absRange=3.0;
 const float NeuralDriver::absMinSpeed=3.0;
+const float NeuralDriver::tcl_slip = 2.0f;					
+const float NeuralDriver::tcl_range = 10.0f;					
 
 /* Clutch constants */
 const float NeuralDriver::clutchMax=0.5;
@@ -153,7 +155,11 @@ NeuralDriver::getAccel(CarState &cs)
 			return 1/(1+exp(cs.getSpeedX() - maxSpeed)); //[0, 1] -> [0,0.5] brakes [0.5,1.0] accel
         else
         {
-			//track is not straight, get neural network steering prediction [0,1] -> [0,0.5] brakes [0.5,1.0] accel
+			//if going slow, give a moderate accel command (helps with getting stuck)
+			if((cs.getSpeedX() < 15.0f) && (cs.getCurLapTime() < 10.0f)){
+				return 0.9f;
+			}
+			//track is not straight, get neural network accBrake prediction [0,1] -> [0,0.5] brakes [0.5,1.0] accel
 			
 			float current_angle = ((cs.getAngle() / PI) + 1.0f) / 2; //normalize from [-pi, +pi] to [-1,1] to [0,2] to [0,1] 
 			float current_offset = (cs.getTrackPos() + 1.0f) / 2; //[-1,1] (when network is in control) to [0,2] to [0,1]
@@ -173,6 +179,7 @@ NeuralDriver::getAccel(CarState &cs)
 			output_vector[0] = 0.0f;
 			accBrakeNetwork->classify(input_vector, output_vector); //returns accel/brake angle from [0,1]
 			float accelBrakeVal = output_vector[0]; //[0, 1] -> [0,0.5] brakes [0.5,1.0] accel
+			//cout << " ACC BRAKE PREDICT: " << accelBrakeVal <<endl;
 			return accelBrakeVal;
         }
     }
@@ -243,6 +250,7 @@ NeuralDriver::wDrive(CarState cs)
         {
 			//scale from [0.5,1] to [1,2] to [0,1]
             accel = (accel_and_brake * 2) - 1;
+			accel = filterTCL(cs, accel);
             brake = 0;
         }
         else
@@ -260,6 +268,20 @@ NeuralDriver::wDrive(CarState cs)
         CarControl cc(accel,brake,gear,steer,clutch);
         return cc;
     }
+}
+
+// TCL filter for accelerator pedal.
+float NeuralDriver::filterTCL(CarState &cs, float accel)
+{
+	if(cs.getSpeedX() < 3.0f){
+		return accel;
+	}
+	float slip = ((cs.getWheelSpinVel(0) + cs.getWheelSpinVel(1)) * wheelRadius[0] / 2.0f) - cs.getSpeedX();
+	if (slip > tcl_slip) {
+		accel = accel - (slip - tcl_slip)/tcl_range;
+		accel = accel > 0.0f ? accel : 0.0f;
+	}
+	return accel;
 }
 
 float
@@ -342,6 +364,15 @@ NeuralDriver::clutching(CarState &cs, float &clutch)
 }
 
 void
+NeuralDriver::initNetworks()
+{
+	steerNetwork = new BPNeuralNetwork(L"maxsteerNetwork.nn");
+    cout << "Loading maxsteerNetwork.nn flag: " << steerNetwork->flag() << endl;
+	accBrakeNetwork = new BPNeuralNetwork(L"maxaccBrakeNetwork.nn");
+    cout << "Loading maxaccBrakeNetwork.nn flag: " << accBrakeNetwork->flag() << endl;
+}
+
+void
 NeuralDriver::init(float *angles)
 {
 
@@ -360,6 +391,4 @@ NeuralDriver::init(float *angles)
 	}
 	angles[9]=0;
 	
-	steerNetwork = new BPNeuralNetwork(L"steerNetwork.nn");
-	accBrakeNetwork = new BPNeuralNetwork(L"accBrakeNetwork.nn");
 }

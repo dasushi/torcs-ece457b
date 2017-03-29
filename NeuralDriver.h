@@ -49,6 +49,7 @@ public:
 
 	// Initialization of the desired angles for the rangefinders
 	virtual void init(float *angles);
+	virtual void initNetworks();
 
 private:
 	
@@ -95,6 +96,8 @@ private:
 	static const float absRange;
 	// min speed to activate ABS
 	static const float absMinSpeed;
+	static const float tcl_slip;					
+	static const float tcl_range;	
 
 	/* Clutch constants */
 	static const float clutchMax;
@@ -138,6 +141,9 @@ private:
 	
 	// Apply an ABS filter to brake command
 	float filterABS(CarState &cs,float brake);
+	
+	// Apply a TCL filter to accel command
+	float filterTCL(CarState &cs,float brake);
 
 	// Solves the clucthing subproblems
 	void clutching(CarState &cs, float &clutch);
