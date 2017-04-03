@@ -6,6 +6,7 @@ from keras.models import Sequential, model_from_json, Model
 from keras.layers import Dense, Input, Lambda, Flatten
 from keras.initializers import RandomNormal, identity
 from keras.optimizers import Adam
+from keras.objectives import mean_squared_error
 
 import tensorflow as tensor
 
@@ -32,52 +33,46 @@ class SteveTheActor(object):
         
         self.session = session
         K.set_session(session)
-        
-        self.model, self.weights, self.state = self.initActorNetwork()
-        self.targetModel, self.targetWeights, self.targetState = self.initActorNetwork()
+        def initActorNetwork(stateDim):
+            state = Input(shape = [stateDim])
+            hidden0 = Dense(HIDDEN_COUNT, activation = 'relu', init='lecun_uniform')(state)
+            hidden1 = Dense(2 * HIDDEN_COUNT, activation = 'relu', init='lecun_uniform')(hidden0)
+
+            #initialize control network signals
+            #steering is [-1, 1] so it is tanh
+            #others are [0, 1] so sigmoidal
+            steeringControl = Dense(1, activation = 'tanh',init=RandomNormal(mean=0.0, stddev=1e-4, seed=None))(hidden1)
+            accControl = Dense(1, activation = 'sigmoid',init=RandomNormal(mean=0.0, stddev=1e-4,seed=None))(hidden1)
+            brakeControl = Dense(1, activation = 'sigmoid',init=RandomNormal(mean=0.0, stddev=1e-4, seed=None))(hidden1)       
+            controlVector = layers.concatenate([steeringControl, accControl, brakeControl])
+            #controlVector = concatLayer([steeringControl, accControl, brakeControl])
+            totalModel = Model(inputs=state, outputs=controlVector)
+            #totalModel.compile(loss='mse', optimizer=Adam(lr =self.learningRate)) 
+            return totalModel, totalModel.trainable_weights, state, controlVector
+
+
+        self.model, self.weights, self.state, self.action = initActorNetwork(stateDimensions)
+        self.targetModel, self.targetWeights, self.targetState, self.targetAction = initActorNetwork(stateDimensions)
       
         #create base action gradient
-        self.action_gradient = tensor.placeholder(tensor.float32,[None, actionDimensions])
-        #initialize parameter gradient based on inverse action gradient
-        #inverseAction = self.action_gradient
-        self.params_grad = tensor.gradients(self.model.output, self.weights, self.action_gradient)
- 
-        gradients = zip(self.params_grad, self.weights)
-        self.optimize = tensor.train.AdamOptimizer(learningRate).minimize(self.model.output, gradients)
-        init = tensor.initialize_all_variables()
+        action_gradient = tensor.placeholder(tensor.float32,[None, actionDimensions])
+        #combine parameter gradient based on inverse action gradient
+        self.weight_grad = tensor.gradients(self.action, self.weights, -action_gradient)
+        #self.loss = tensor.reduce_mean(mean_squared_error(-self.action_gradient, self.model.output)) 
+        gradients = zip(self.weight_grad, self.weights)
+        self.optimize = tensor.train.AdamOptimizer(learningRate).apply_gradients(gradients)
+        init = tensor.global_variables_initializer()
+        self.action_gradient = action_gradient
         self.session.run(init)
 
-    def initActorNetwork(self):
-        state = Input(shape = [self.stateDimensions])
-        hidden0 = Dense(HIDDEN_COUNT, activation = 'relu', init='lecun_uniform')(state)
-        hidden1 = Dense(2 * HIDDEN_COUNT, activation = 'relu', init='lecun_uniform')(hidden0)
-
-        #initialize control network signals
-        #steering is [-1, 1] so it is tanh
-        #others are [0, 1] so sigmoidal
-        steeringControl = Dense(1, activation = 'tanh', init='lecun_uniform')(hidden1)#, kernel_initializer ='random_uniform', bias_initializer = 'zeros')(hidden1)
-        accControl = Dense(1, activation = 'sigmoid', init='lecun_uniform')(hidden1)#, kernel_initializer = 'random_uniform', bias_initializer = 'zeros')(hidden1)
-        brakeControl = Dense(1, activation = 'sigmoid', init='lecun_uniform')(hidden1)#, kernel_initializer = 'random_uniform', bias_initializer = 'zeros')(hidden1)
-       
-        controlVector = layers.concatenate([steeringControl, accControl, brakeControl])
-        #controlVector = concatLayer([steeringControl, accControl, brakeControl])
-        totalModel = Model(inputs=state, outputs=controlVector)
-        totalModel.compile(loss='mse', optimizer=Adam(lr =self.learningRate)) 
-        return totalModel, totalModel.trainable_weights, state
-
-
+    
     def train(self, state, actionGrad):
-        #create base action gradient
-        #self.action_gradient = tensor.placeholder(tensor.float32,[None, self.actionDimensions])
-        #initialize parameter gradient based on inverse action gradient
-        #inverseAction = self.action_gradient
-        #self.params_grad = tensor.gradients(self.model.output, self.weights, -self.action_gradient)
-        #gradients = zip(self.params_grad, self.weights)
-        #self.optimize = tensor.train.AdamOptimizer(self.learningRate).apply_gradients(gradients)
-        
-
         self.session.run(self.optimize, feed_dict={ self.state: state, 
                                                     self.action_gradient: actionGrad })
+
+    def get_actions(self, states):
+        return self.targetModel.predict(states)
+
 
     def trainTarget(self):
         #update Actor's weights & target weights

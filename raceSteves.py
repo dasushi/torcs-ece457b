@@ -9,10 +9,11 @@ import random
 import argparse
 import timeit
 import os
+import csv
 
 from gym_torcs import TorcsEnv
-from steveTheActor import SteveTheActor
-from steveTheCritic import SteveTheCritic
+from SteveTheActor import SteveTheActor
+from SteveTheCritic import SteveTheCritic
 from FrameBuffer import FrameBuffer
 
 np.random.seed(14245)    
@@ -25,14 +26,14 @@ class ornUhl(object):
     def calc(self, x):
         return np.random.randn(1) * self.sigma + self.theta * (self.mu - x)
 #centered on 0
-ornUhlSteer = ornUhl(0.0, 0.15, 0.6)
+ornUhlSteer = ornUhl(0.0, 0.15, 0.7)
 #centered on 0.55 
-ornUhlAcc = ornUhl(0.5, 0.1, 1.00) 
+ornUhlAcc = ornUhl(0.65, 0.1, 1.00) 
 #centered on -0.1
-ornUhlBrake = ornUhl(-0.1, 0.05, 1.00)
+ornUhlBrake = ornUhl(-0.1, 0.05, 0.90)
 
 def playGame(trainFlag = 1):
-    bufferLength = 100000
+    bufferLength = 50000
     #values from Google paper
     #http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
     gamma = 0.99
@@ -40,45 +41,47 @@ def playGame(trainFlag = 1):
     epsilon = 1
     actorLearnRate = 0.0001
     criticLearnRate = 0.001
-    epsilonDelta = 1 / 100000.0   
-    episodeMax = 1000
-    maxIter = 100000
-    batchLength = 32
+    epsilonDelta = 1 / 5000.0   
+    episodeMax = 2500
+    maxIter = 10000
+    batchLength = 16
     step = 0
     flag = 0    
+    totalLoss = 0
     complete = False
     actionDimensions = 3
     stateDimensions = 29
    
-
-    
+     
+    #set TensorFlow to use GPU, add speedups 
     configProto = tensor.ConfigProto()
     configProto.gpu_options.allow_growth = True
     session = tensor.Session(config = configProto)
     K.set_session(session)
-
+    
+    #Initialize actor and critic
     actor = SteveTheActor(actionDimensions, stateDimensions, batchLength, 
                           session, actorLearnRate, tau)
     critic = SteveTheCritic(actionDimensions, stateDimensions, batchLength, 
                           session, criticLearnRate, tau)
-    
+    #initialize framebuffer for replays
     frameBuffer = FrameBuffer(bufferLength)
+    #launch game
     torcsEnv = TorcsEnv(vision = False, throttle = True, gear_change = False)
     
+    #load weights from file
     try:
         if os.path.isfile("steveActor.h5"):
             actor.model.load_weights("steveActor.h5")
-        if os.path.isfile("steveActor.h5"):   
-            actor.target_model.load_weights("steveActor.h5")
+            actor.targetModel.load_weights("steveActor.h5")
         if os.path.isfile("steveCritic.h5"):   
-            critic.model.load_weights("steveCritic.h5")
-        if os.path.isfile("steveCritic.h5"):   
-            critic.target_model.load_weights("steveCritic.h5")
+            critic.model.load_weights("steveCritic.h5")   
+            critic.targetModel.load_weights("steveCritic.h5")
     except:
         print("Error loading weight files")
           
     for x in range(episodeMax):
-        print("Start of Ep:" + str(x) + " Buffer: " + str(frameBuffer.getCount()))
+        print("Start of Ep:" + str(x) + " Buffer:" + str(frameBuffer.getCount()))
 
         if np.mod(x, 5) == 0:
             observ = torcsEnv.reset(relaunch = True)
@@ -104,54 +107,56 @@ def playGame(trainFlag = 1):
                 act[0][0] = actPredict[0][0]
                 act[0][1] = actPredict[0][1]
                 act[0][2] = actPredict[0][2]
-            #perform action based on predicted input, get updated state information 
+            #perform action based on predicted input
+            #get updated state information 
             observ, newReward, complete, info = torcsEnv.step(act[0])
             #stack new sensor information
             newStack = stackSensors(observ)
             #add new frame to frameBuffer
             frameBuffer.addFrame(stack, act[0], newReward, newStack, complete)
-            
+            #if frameBuffer.getSize() > batchLength: 
             batch = frameBuffer.getBatch(batchLength)
   
             state = np.asarray([i[0] for i in batch])
             actions = np.asarray([i[1] for i in batch])
-            yTrain = actions
             reward = np.asarray([i[2] for i in batch])
             newState = np.asarray([i[3] for i in batch])
             completeVector = np.asarray([i[4] for i in batch])
-            #print(state)
-            predictControls = actor.targetModel.predict(newState)
-            #print(predictControls)
-            targetQVal = critic.targetModel.predict([predictControls, newState])
-            
+            yTrain = np.asarray([i[1] for i in batch])
+            #yTrain = critic.getRewards(state, actions)
+            #print(reward)
+            #print(yTrain)
+            targetQVal = critic.getRewards(newState, actor.targetModel.predict(newState))
             for z in range(len(batch)):
-                yTrain[z] = reward[z]
+                #yTrain[z] = reward[z]
                 if not completeVector[z]:
-                    yTrain[z] = yTrain[z] + gamma * targetQVal[z]
+                    yTrain[z] = reward[z] + gamma * targetQVal[z]
+                else:
+                    yTrain[z] = reward[z]
                 
             if(trainFlag):
                 #update loss based on critic analyzing last action/state result
-                loss = loss + critic.model.train_on_batch([actions, state], yTrain)
+                loss += critic.model.train_on_batch([state, actions], yTrain)
                 #actor predicts new input based on new state
                 actorGradient = actor.model.predict(state)
-                #print(actorGradient)
-                #print(state)
                 #critic is updated based on actor gradient result
-                gradients = critic.gradients(actorGradient, state)
+                gradient = critic.gradients(state, actorGradient)
+                
                 #actor trained based on critic gradient
-                actor.train(gradients, state)
+                actor.train(state, gradient)
                 actor.trainTarget()
                 critic.trainTarget()
                 
             rewardSum = rewardSum + newReward
             stack = newStack
-            print("Done Ep: " + str(x) + " Step: " + str(step) + " act: " + str(act) + " loss: " + str(loss) + " Reward: " + str(newReward)) 
+            #print("s:" + str(step) + " out:" + str(act) + " Loss:" + str(loss) + " Reward:" + str(rewardSum)) 
             step += 1
+            totalLoss += loss
             if complete:
                 break
-        if np.mod(x, 5) == 0:
-            if(trainFlag):
-                print("Saving Actor and Critic Models")
+        if trainFlag and np.mod(x, 5) == 0:
+            print("Saving Actor and Critic Models")
+            try:
                 actor.model.save_weights("steveActor.h5", overwrite = True)
                 with open("steveActor.json", "w") as actorFile:
                     dump(actor.model.to_json(), actorFile)
@@ -159,8 +164,14 @@ def playGame(trainFlag = 1):
                 critic.model.save_weights("steveCritic.h5", overwrite = True)
                 with open("steveCritic.json", "w") as criticFile:
                     dump(critic.model.to_json(), criticFile)
-        print("Sum Episode: " + str(x) + " Reward Sum: " + str(rewardSum))
-        print("Steps: " + str(step))
+            except:
+                print("Error saving Actor and Critic Models")
+        print("***Episode:" + str(x) + " Reward Sum:" + str(rewardSum) + "Loss:" + str(totalLoss))
+        print("***Steps:" + str(step))
+        with open('results.csv', 'a') as csvfile:
+            wr = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL);
+            wr.writerow([x, step, rewardSum, totalLoss, act])
+            totalLoss = 0
     torcsEnv.end()
     print("Race Ended!")
 
