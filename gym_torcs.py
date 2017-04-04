@@ -12,7 +12,8 @@ import time
 
 class TorcsEnv:
     terminal_judge_start = 75  # If after 100 timestep still no progress, terminated
-    termination_limit_progress = 0  # [km/h], episode terminates if car is running slower than this limit
+    terminal_judge_end = 300 # If it made it 300, it is probably smart enough to continue
+    termination_limit_progress = -3  # [km/h], episode terminates if car is running slower than this limit
     default_speed = 50
 
     initial_reset = True
@@ -30,7 +31,7 @@ class TorcsEnv:
         if self.vision is True:
             os.system('torcs -nofuel -nodamage -nolaptime -vision &')
         else:
-            os.system('torcs -nofuel -nolaptime &')
+            os.system('torcs -nofuel -nolaptime -r ~/.torcs/raceman/quickrace.xml &')
         time.sleep(0.5)
         os.system('sh autostart.sh')
         time.sleep(0.5)
@@ -91,12 +92,12 @@ class TorcsEnv:
                (client.S.d['wheelSpinVel'][0]+client.S.d['wheelSpinVel'][1]) > 5):
                 action_torcs['accel'] -= .2
         else:
-            if(this_action['accel'] > this_action['brake']):
-                action_torcs['accel'] = this_action['accel']
-                action_torcs['brake'] = 0.0
-            else:
-                action_torcs['accel'] = this_action['accel']
-                action_torcs['brake'] = this_action['brake']
+            #if(this_action['accel'] > this_action['brake']):
+            action_torcs['accel'] = this_action['accel']
+            #    action_torcs['brake'] = 0.0
+            #else:
+            #    action_torcs['accel'] = this_action['accel']
+            action_torcs['brake'] = this_action['brake']
 
         #  Automatic Gear Change by Snakeoil
         if self.gear_change is True:
@@ -139,7 +140,7 @@ class TorcsEnv:
         rpm = np.array(obs['rpm'])
         angle = np.array(obs['angle'])
 
-        progress = sp*np.cos(angle) - np.abs(sp*np.sin(angle)) - sp * np.abs(trackPos)
+        progress = sp*np.cos(angle) - np.abs(sp*np.sin(angle)) - (sp / 3) * np.abs(trackPos)
         reward = progress
 
         # collision detection
@@ -155,7 +156,7 @@ class TorcsEnv:
 
         if self.terminal_judge_start < self.time_step: # Episode terminates if the progress of agent is small
             if progress < self.termination_limit_progress:
-                print("No progress")
+                print("No progress " + str(progress))
                 episode_terminate = True
                 client.R.d['meta'] = True
 
@@ -214,7 +215,7 @@ class TorcsEnv:
         if self.vision is True:
             os.system('torcs -nofuel -nodamage -nolaptime -vision &')
         else:
-            os.system('torcs -nofuel -nolaptime &')
+            os.system('torcs -nofuel -nolaptime -r ~/.torcs/config/raceman/quickrace.xml &')
         time.sleep(0.5)
         os.system('sh autostart.sh')
         time.sleep(0.5)

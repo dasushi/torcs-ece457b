@@ -41,12 +41,13 @@ def playGame(trainFlag = 1):
     epsilon = 1
     actorLearnRate = 0.0001
     criticLearnRate = 0.001
-    epsilonDelta = 1 / 5000.0   
+    epsilonDelta = 1 / 10000.0   
     episodeMax = 2500
     maxIter = 10000
     batchLength = 16
     step = 0
-    flag = 0    
+    flag = 0 
+    avgSpeed = 0   
     totalLoss = 0
     complete = False
     actionDimensions = 3
@@ -89,6 +90,7 @@ def playGame(trainFlag = 1):
             observ = torcsEnv.reset()
 
         stack = stackSensors(observ)
+        avgSpeed = observ.speedX
         rewardSum = 0.0
         for y in range(maxIter):
             epsilon = epsilon - epsilonDelta
@@ -112,6 +114,9 @@ def playGame(trainFlag = 1):
             observ, newReward, complete, info = torcsEnv.step(act[0])
             #stack new sensor information
             newStack = stackSensors(observ)
+            #rolling average over buffer length
+            avgSpeed -= avgSpeed / batchLength
+            avgSpeed += observ.speedX / batchLength
             #add new frame to frameBuffer
             frameBuffer.addFrame(stack, act[0], newReward, newStack, complete)
             #if frameBuffer.getSize() > batchLength: 
@@ -168,9 +173,9 @@ def playGame(trainFlag = 1):
                 print("Error saving Actor and Critic Models")
         print("***Episode:" + str(x) + " Reward Sum:" + str(rewardSum) + "Loss:" + str(totalLoss))
         print("***Steps:" + str(step))
-        with open('results.csv', 'a') as csvfile:
+        with open('alpineresults.csv', 'a') as csvfile:
             wr = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL);
-            wr.writerow([x, step, rewardSum, totalLoss, act])
+            wr.writerow([x, step, rewardSum, totalLoss, avgSpeed,act])
             totalLoss = 0
     torcsEnv.end()
     print("Race Ended!")
