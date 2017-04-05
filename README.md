@@ -13,6 +13,8 @@ INTRO
 --------------
 TORCS Actor-Critic Deep Deterministic Gradient Policy driver for ece457b
 
+Check it out! https://www.youtube.com/edit?o=U&video\_id=zoH7e3BybCE
+
 This is a driver that uses Google's Deep Deterministic Gradient Policy through Tensorflow and Keras to drive in TORCS via gym\_torcs and openai-gym, with vTorcsRL
 
 REQUIREMENTS
@@ -29,7 +31,10 @@ REQUIREMENTS
 
 INSTALLING
 ---------------
-  
+
+
+https://github.com/ugo-nama-kun/gym\_torcs
+ 
 Install gym\_torcs somewhere and setup vTorcsRL, copy driver files from here to there
 
 cp \*.py ../gym\_torcs
