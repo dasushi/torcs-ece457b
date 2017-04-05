@@ -1,0 +1,126 @@
+digraph G {
+
+        rankdir=LR
+	splines=line
+        
+        node [fixedsize=True, label=""];
+
+        subgraph cluster_0 {
+		color=white;
+		node [style=solid,color=blue4, shape=circle, label="[0,1]"];
+		x1 x2 x3 x4 x5 x6;
+		label = "Layer 1 (Input layer, Linear)";
+	}
+
+	subgraph cluster_1 {
+		color=white;
+		node [style=solid,color=red2, shape=circle, label="Sig"];
+		a12 a22 a32 a42 a52 a62 a72 a82 a92 a102 a112 a122;
+		label = "Layer 2 (Hidden layer, Sigmoid)";
+	}
+
+	subgraph cluster_2 {
+		color=white;
+		node [style=solid,color=seagreen2, shape=circle, label="[0,1] Out"];
+		O;
+		label="Layer 3 (Output layer)";
+	}
+
+        edge [arrowhead="none"];
+
+        x1 -> a12;
+        x1 -> a22;
+        x1 -> a32;
+        x1 -> a42;
+        x1 -> a52;
+        x1 -> a62;
+        x1 -> a72;
+        x1 -> a82;
+        x1 -> a92;
+        x1 -> a102;
+        x1 -> a112;
+        x1 -> a122;
+
+        x2 -> a12;
+        x2 -> a22;
+        x2 -> a32;
+        x2 -> a42;
+        x2 -> a52;
+        x2 -> a62;
+        x2 -> a72;
+        x2 -> a82;
+        x2 -> a92;
+        x2 -> a102;
+        x2 -> a112;
+        x2 -> a122;
+
+        x3 -> a12;
+        x3 -> a22;
+        x3 -> a32;
+        x3 -> a42;
+        x3 -> a52;
+        x3 -> a62;
+        x3 -> a72;
+        x3 -> a82;
+        x3 -> a92;
+        x3 -> a102;
+        x3 -> a112;
+        x3 -> a122;
+
+        x4 -> a12;
+        x4 -> a22;
+        x4 -> a32;
+        x4 -> a42;
+        x4 -> a52;
+        x4 -> a62;
+        x4 -> a72;
+        x4 -> a82;
+        x4 -> a92;
+        x4 -> a102;
+        x4 -> a112;
+        x4 -> a122;
+
+        x5 -> a12;
+        x5 -> a22;
+        x5 -> a32;
+        x5 -> a42;
+        x5 -> a52;
+        x5 -> a62;
+        x5 -> a72;
+        x5 -> a82;
+        x5 -> a92;
+        x5 -> a102;
+        x5 -> a112;
+        x5 -> a122;
+
+        x6 -> a12;
+        x6 -> a22;
+        x6 -> a32;
+        x6 -> a42;
+        x6 -> a52;
+        x6 -> a62;
+        x6 -> a72;
+        x6 -> a82;
+        x6 -> a92;
+        x6 -> a102;
+        x6 -> a112;
+        x6 -> a122;
+
+
+
+        a12 -> O
+        a22 -> O
+        a32 -> O
+        a42 -> O
+        a52 -> O
+        a62 -> O
+        a72 -> O
+        a82 -> O
+        a92 -> O
+        a102 -> O
+        a112 -> O
+        a122 -> O
+
+
+
+}

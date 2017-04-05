@@ -18,6 +18,8 @@ from FrameBuffer import FrameBuffer
 
 np.random.seed(14245)    
 
+#Ornstein Uhlenbecker noise
+#models momentum, so works nicely with control systems problems
 class ornUhl(object):
     def __init__(self, mu, sigma, theta):
         self.sigma = sigma
@@ -26,28 +28,29 @@ class ornUhl(object):
     def calc(self, x):
         return np.random.randn(1) * self.sigma + self.theta * (self.mu - x)
 #centered on 0
-ornUhlSteer = ornUhl(0.0, 0.15, 0.7)
+ornUhlSteer = ornUhl(0.0, 0.1, 0.75)
 #centered on 0.55 
-ornUhlAcc = ornUhl(0.65, 0.1, 1.00) 
+ornUhlAcc = ornUhl(0.60, 0.1, 1.00) 
 #centered on -0.1
-ornUhlBrake = ornUhl(-0.1, 0.05, 0.90)
+ornUhlBrake = ornUhl(-0.1, 0.075, 1.00)
 
-def playGame(trainFlag = 1):
+def playGame(trainFlag = 0):
     bufferLength = 50000
     #values from Google paper
     #http://pemami4911.github.io/blog/2016/08/21/ddpg-rl.html
-    gamma = 0.99
+    gamma = 0.97
     tau = 0.001
     epsilon = 1
     actorLearnRate = 0.0001
     criticLearnRate = 0.001
-    epsilonDelta = 1 / 10000.0   
     episodeMax = 2500
-    maxIter = 10000
-    batchLength = 16
+    maxIter = 100000
+    epsilonDelta = 1 / (maxIter * 2)   
+    batchLength = 32
     step = 0
     flag = 0 
-    avgSpeed = 0   
+    avgSpeed = 0
+    damage = 0   
     totalLoss = 0
     complete = False
     actionDimensions = 3
@@ -83,8 +86,8 @@ def playGame(trainFlag = 1):
           
     for x in range(episodeMax):
         print("Start of Ep:" + str(x) + " Buffer:" + str(frameBuffer.getCount()))
-
-        if np.mod(x, 5) == 0:
+        #to get rid of memory leaks every few dozen launches
+        if np.mod(x, 25) == 0:
             observ = torcsEnv.reset(relaunch = True)
         else:
             observ = torcsEnv.reset()
@@ -104,11 +107,19 @@ def playGame(trainFlag = 1):
                 noise = calcNoise(actionDimensions, actPredict, epsilon)
                 act[0][0] = actPredict[0][0] + noise[0][0]
                 act[0][1] = actPredict[0][1] + noise[0][1]
-                act[0][2] = actPredict[0][2] + noise[0][2]
+                if observ.track[9] < 100 and random.random() <=0.1:
+                    #Add opposite of noise (~0.1 centered rather than 0.1)
+                    #To simulate pressing brake slightly
+                    #"Feeling the brake"
+                    act[0][2] = actPredict[0][2] - noise[0][2]
+                else:
+                    act[0][2] = actPredict[0][2] + noise[0][2]
             else:
                 act[0][0] = actPredict[0][0]
                 act[0][1] = actPredict[0][1]
-                act[0][2] = actPredict[0][2]
+                if observ.track[9] < 100 and random.random() <=0.1:
+                    noise = calcNoise(actionDimensions, actPredict, epsilon)
+                    act[0][2] = actPredict[0][2] - noise[0][2]
             #perform action based on predicted input
             #get updated state information 
             observ, newReward, complete, info = torcsEnv.step(act[0])
@@ -117,6 +128,7 @@ def playGame(trainFlag = 1):
             #rolling average over buffer length
             avgSpeed -= avgSpeed / batchLength
             avgSpeed += observ.speedX / batchLength
+            damage = observ.damage
             #add new frame to frameBuffer
             frameBuffer.addFrame(stack, act[0], newReward, newStack, complete)
             #if frameBuffer.getSize() > batchLength: 
@@ -128,12 +140,9 @@ def playGame(trainFlag = 1):
             newState = np.asarray([i[3] for i in batch])
             completeVector = np.asarray([i[4] for i in batch])
             yTrain = np.asarray([i[1] for i in batch])
-            #yTrain = critic.getRewards(state, actions)
-            #print(reward)
-            #print(yTrain)
+            
             targetQVal = critic.getRewards(newState, actor.targetModel.predict(newState))
             for z in range(len(batch)):
-                #yTrain[z] = reward[z]
                 if not completeVector[z]:
                     yTrain[z] = reward[z] + gamma * targetQVal[z]
                 else:
@@ -153,8 +162,7 @@ def playGame(trainFlag = 1):
                 critic.trainTarget()
                 
             rewardSum = rewardSum + newReward
-            stack = newStack
-            #print("s:" + str(step) + " out:" + str(act) + " Loss:" + str(loss) + " Reward:" + str(rewardSum)) 
+            stack = newStack 
             step += 1
             totalLoss += loss
             if complete:
@@ -171,12 +179,13 @@ def playGame(trainFlag = 1):
                     dump(critic.model.to_json(), criticFile)
             except:
                 print("Error saving Actor and Critic Models")
-        print("***Episode:" + str(x) + " Reward Sum:" + str(rewardSum) + "Loss:" + str(totalLoss))
+        print("***Episode:" + str(x) + " Reward Sum:" + str(rewardSum) + "Loss:" + str(totalLoss) + " avgSpeed:" + str(avgSpeed) + " damage:" + str(damage))
         print("***Steps:" + str(step))
-        with open('alpineresults.csv', 'a') as csvfile:
+        with open('speedwaynewresults.csv', 'a') as csvfile:
             wr = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL);
-            wr.writerow([x, step, rewardSum, totalLoss, avgSpeed,act])
-            totalLoss = 0
+            wr.writerow([x, step, rewardSum, totalLoss, avgSpeed, damage, act])
+        totalLoss = 0
+        step = 0
     torcsEnv.end()
     print("Race Ended!")
 
